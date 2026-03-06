@@ -1129,6 +1129,23 @@ const App = () => {
                   </div>
                 </div>
               </BentoCard>
+
+              <BentoCard className="mt-6">
+                <div className="flex items-center gap-2 mb-6 text-destructive">
+                  <AlertCircle size={20} />
+                  <h3 className="font-semibold text-lg">Account Actions</h3>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Sign out of your account to clear your current session.</p>
+                  <Button
+                    variant="destructive"
+                    className="w-full justify-between"
+                    onClick={logoutUser}
+                  >
+                    <span className="flex items-center gap-2"><LogOut size={16} /> Log Out</span>
+                  </Button>
+                </div>
+              </BentoCard>
             </motion.div>
           )}
 
