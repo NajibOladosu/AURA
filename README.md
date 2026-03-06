@@ -1,8 +1,6 @@
 # AURA - Intelligent Medical Triage
   
-  **AI-Powered Emergency Assistance & Health Assessment**
-
-  [![GitHub repository](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/NajibOladosu/AURA)
+  **Automated Urgent Response Assistant - AI-Powered Emergency Assistance & Health Assessment**
 
 ---
 
@@ -33,7 +31,6 @@ With integrated **geolocation services**, AURA triangulates your exact coordinat
 - **Tailwind CSS** (for styling and glassmorphism UI)
 - **Framer Motion** (for smooth animations and transitions)
 - **Lucide React** (for iconography)
-- **html2canvas** (for generating shareable report images)
 
 ### Backend
 - **Node.js & Express.js**
