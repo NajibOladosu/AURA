@@ -1,12 +1,8 @@
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" alt="AURA Banner" width="100%" />
-
-  # AURA - Intelligent Medical Triage
+# AURA - Intelligent Medical Triage
   
   **AI-Powered Emergency Assistance & Health Assessment**
 
   [![GitHub repository](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/NajibOladosu/AURA)
-</div>
 
 ---
 
@@ -59,50 +55,50 @@ Follow these instructions to set up and run the AURA application locally.
 
 ### 1. Clone the Repository
 
-\`\`\`bash
+```bash
 git clone https://github.com/NajibOladosu/AURA.git
 cd AURA
-\`\`\`
+```
 
 ### 2. Backend Setup
 
 Open a terminal and navigate to the `server` directory:
 
-\`\`\`bash
+```bash
 cd server
 npm install
-\`\`\`
+```
 
 Create a `.env` file in the `server` directory with the following variables:
 
-\`\`\`env
+```env
 PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
 GEMINI_API_KEY=your_gemini_api_key
-\`\`\`
+```
 
 Start the backend development server:
 
-\`\`\`bash
+```bash
 npm run dev
-\`\`\`
+```
 *(The backend should now be running on `http://localhost:5000`)*
 
 ### 3. Frontend Setup
 
 Open a new terminal window and navigate to the `client` directory:
 
-\`\`\`bash
+```bash
 cd client
 npm install
-\`\`\`
+```
 
 Start the frontend development server:
 
-\`\`\`bash
+```bash
 npm run dev
-\`\`\`
+```
 *(The frontend will start and typically be accessible at `http://localhost:5173` or `http://localhost:3000`)*
 
 ---
