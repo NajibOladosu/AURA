@@ -1557,7 +1557,7 @@ const App = () => {
                       <p className="opacity-90">Immediate medical attention is recommended.</p>
                     </div>
                   </div>
-                  <Button variant="glass" className="bg-white text-red-600 hover:bg-white/90 border-transparent font-bold">
+                  <Button variant="glass" className="bg-white dark:bg-black text-red-600 hover:bg-white/90 dark:hover:bg-black/90 border-transparent font-bold">
                     <Phone className="mr-2 w-5 h-5" /> CALL EMERGENCY SERVICES
                   </Button>
                 </motion.div>
