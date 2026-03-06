@@ -206,9 +206,21 @@ const App = () => {
           setLocation({ lat, lng });
 
           try {
-            // Replaced reverseGeocode with simple message
-            const address = "GPS Detected";
-            setLocationName(address);
+            const token = localStorage.getItem('aura_token');
+            const res = await fetch('http://localhost:5000/api/ai/reverse-geocode', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` })
+              },
+              body: JSON.stringify({ lat, lng })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              setLocationName(data.name || "GPS Detected");
+            } else {
+              setLocationName("GPS Detected");
+            }
           } catch (e) {
             setLocationName("GPS Detected");
           }
@@ -228,10 +240,22 @@ const App = () => {
     if (!manualLocationInput.trim()) return;
     setIsLocating(true);
     try {
-      // Replaced geocodeLocation with placeholder or browser native logic
-      // In a real app we would call a backend geocoding endpoint here.
-      setLocation({ lat: 40.7128, lng: -74.0060 });
-      setLocationName(manualLocationInput);
+      const token = localStorage.getItem('aura_token');
+      const res = await fetch('http://localhost:5000/api/ai/geocode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify({ locationName: manualLocationInput })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.lat && data.lng) {
+          setLocation({ lat: data.lat, lng: data.lng });
+          setLocationName(data.address || manualLocationInput);
+        }
+      }
       setManualLocationInput('');
     } catch (e) {
       console.error(e);
@@ -593,24 +617,19 @@ const App = () => {
     setAgents(prev => prev.map((a, i) => i === 3 ? { ...a, status: 'working', message: `Triangulating ${facilityType}...` } : a));
     setLoadingPlaces(true);
     try {
+      const token = localStorage.getItem('aura_token');
+      const res = await fetch('http://localhost:5000/api/ai/places', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify({ lat: location.lat, lng: location.lng, facilityType })
+      });
+
       let places: Place[] = [];
-      // Simulation of findNearbyPlaces (which should eventually also move to backend)
-      // Because we removed the lib/gemini.ts files, we'll mock the response here to allow compilation.
-      if (triage.suggestedFacilities && triage.suggestedFacilities.length > 0) {
-        places = [
-          {
-            name: 'City General Hospital',
-            address: '123 Health Ave, Medical District',
-            rating: '4.5',
-            userRatingCount: 120,
-          },
-          {
-            name: 'Downtown Urgent Care',
-            address: '456 Main St, Downtown',
-            rating: '4.2',
-            userRatingCount: 85,
-          }
-        ];
+      if (res.ok) {
+        places = await res.json();
       }
       setNearbyPlaces(places);
       setAgents(prev => prev.map((a, i) => i === 3 ? { ...a, status: 'complete', message: `Found ${places.length} nodes.` } : a));

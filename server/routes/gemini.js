@@ -201,5 +201,100 @@ router.post('/chat', authMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Error processing chat request' });
     }
 });
+router.post('/places', authMiddleware, async (req, res) => {
+    try {
+        const { lat, lng, facilityType } = req.body;
+        if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `
+                Task: Find the top 3 ${facilityType} locations strictly near Lat: ${lat}, Lng: ${lng}.
+                
+                CRITICAL LOCATION RULES:
+                1. Results MUST be within 50km of the provided coordinates.
+                2. Do NOT infer a location if you cannot find exact matches.
+                3. Do NOT provide results from other countries.
+                
+                Output Requirements:
+                - Output ONLY a JSON array.
+                - Structure: [{"name": "Place Name", "rating": "4.5", "address": "Full Address with City/Zip", "googleMapsUri": "https://maps.google.com/..."}]
+                - If 'googleMapsUri' is unavailable from the tool, leave it as an empty string.
+                - Ensure 'address' is complete.
+                - Do NOT write conversational text.
+                - Do NOT use markdown code blocks.
+            `,
+            config: {
+                tools: [{ googleMaps: {} }],
+                toolConfig: {
+                    retrievalConfig: {
+                        latLng: { latitude: lat, longitude: lng }
+                    }
+                }
+            }
+        });
+
+        let text = response.text || "[]";
+        let placesRaw;
+        try {
+            placesRaw = JSON.parse(text);
+        } catch {
+            const match = text.match(/\[[\s\S]*\]/);
+            placesRaw = match ? JSON.parse(match[0]) : [];
+        }
+
+        const places = placesRaw.map((p) => ({
+            name: p.name || "Unknown Facility",
+            rating: p.rating || undefined,
+            address: p.address || undefined,
+            googleMapsUri: p.googleMapsUri || undefined
+        }));
+
+        res.json(places);
+    } catch (error) {
+        console.error("Maps Error:", error);
+        res.status(500).json({ error: 'Error processing places request' });
+    }
+});
+
+router.post('/geocode', authMiddleware, async (req, res) => {
+    try {
+        const { locationName } = req.body;
+        if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
+
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Get the latitude, longitude and standard formatted address for "${locationName}". Return strictly JSON: { "lat": number, "lng": number, "address": "string" }.`,
+            config: {
+                responseMimeType: "application/json"
+            }
+        });
+
+        res.json(JSON.parse(response.text || "{}"));
+    } catch (e) {
+        console.error("Geocoding failed", e);
+        res.status(500).json({ error: 'Failed to geocode' });
+    }
+});
+
+router.post('/reverse-geocode', authMiddleware, async (req, res) => {
+    try {
+        const { lat, lng } = req.body;
+        if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
+
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `What is the City, Region (and Country if applicable) for coordinates ${lat}, ${lng}? Return ONLY the location name string (e.g. "San Francisco, CA"). Do not include other text.`,
+        });
+
+        res.json({ name: response.text?.trim() || "Unknown Location" });
+    } catch (e) {
+        console.error("Reverse geocoding failed", e);
+        res.status(500).json({ error: 'Failed to reverse geocode' });
+    }
+});
 
 export default router;
