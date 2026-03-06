@@ -100,10 +100,37 @@ npm run dev
 
 ---
 
-## 📱 Usage
+## � Docker
 
-1. **Sign Up / Log In**: Create an account or log in to start a secure session.
-2. **Setup Profile**: (Optional) Add chronic conditions, allergies, or medications to inform the AI contextually.
-3. **Describe Symptoms**: Use the text area, microphone, or camera buttons to input what you're experiencing.
-4. **View Assessment**: AURA will process the input and return a Risk Level (Self-Care, Urgent, Emergency), a summary, immediate actions, and nearby facilities based on your location.
-5. **Share/Save**: Use the "Share Report" feature to export your triage result as an image.
+For localized orchestration and ensuring environment parity, AURA is fully containerized.
+
+### Prerequisites
+- [Docker](https://www.docker.com/products/docker-desktop/) installed.
+
+### Run with Docker Compose
+1. Ensure your `.env` file is set up in the `server` directory.
+2. From the project root, run:
+```bash
+docker-compose up --build
+```
+The application will be accessible at `http://localhost:3000`.
+
+---
+
+## ☁️ Vercel Deployment
+
+AURA is configured for seamless deployment on Vercel as a monorepo.
+
+1. Install the [Vercel CLI](https://vercel.com/docs/cli).
+2. Login and deploy:
+```bash
+vercel
+```
+3. Follow the CLI prompts to link your project.
+4. Set your environment variables (`MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`) in the Vercel Dashboard.
+
+---
+
+<div align="center">
+  <p>Built with ❤️ and AI.</p>
+</div>
