@@ -817,37 +817,39 @@ const App = () => {
       </div>
 
       {/* Navigation */}
-      <header className="fixed top-0 w-full z-50 px-6 py-6 flex justify-between items-center max-w-7xl mx-auto left-0 right-0">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => currentUser && setView('welcome')}>
-          <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center">
-            <Sparkles size={16} strokeWidth={2.5} />
+      <header className="fixed top-0 w-full z-50 bg-background/40 backdrop-blur-md border-b border-border/50">
+        <div className="px-6 py-4 flex justify-between items-center max-w-7xl mx-auto">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => currentUser && setView('welcome')}>
+            <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center">
+              <Sparkles size={16} strokeWidth={2.5} />
+            </div>
+            <span className="font-display font-semibold text-lg tracking-tight">AURA</span>
           </div>
-          <span className="font-display font-semibold text-lg tracking-tight">AURA</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {currentUser && (
-            <button
-              onClick={() => setView('profile')}
-              className="hidden md:flex items-center gap-2 text-sm text-muted-foreground mr-2 bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-full border border-border/50 transition-colors"
+          <div className="flex items-center gap-3">
+            {currentUser && (
+              <button
+                onClick={() => setView('profile')}
+                className="hidden md:flex items-center gap-2 text-sm text-muted-foreground mr-2 bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-full border border-border/50 transition-colors"
+              >
+                <Fingerprint size={14} /> {currentUser.name}
+              </button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setView('settings')}
+              className="text-muted-foreground hover:text-primary"
+              title="Settings"
             >
-              <Fingerprint size={14} /> {currentUser.name}
-            </button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setView('settings')}
-            className="text-muted-foreground hover:text-primary"
-            title="Settings"
-          >
-            <Settings size={18} />
-          </Button>
-          <ThemeToggle isDark={isDark} toggle={toggleTheme} />
-          {currentUser && (
-            <Button variant="ghost" size="icon" onClick={logoutUser} className="ml-1 text-muted-foreground hover:text-destructive" title="Log Out">
-              <LogOut size={18} />
+              <Settings size={18} />
             </Button>
-          )}
+            <ThemeToggle isDark={isDark} toggle={toggleTheme} />
+            {currentUser && (
+              <Button variant="ghost" size="icon" onClick={logoutUser} className="ml-1 text-muted-foreground hover:text-destructive" title="Log Out">
+                <LogOut size={18} />
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
