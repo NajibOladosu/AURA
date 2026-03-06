@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import html2canvas from 'html2canvas';
 import { TriageResult, AgentState, Place, ChatMessage, HistorySession, UserProfile, User } from './lib/types';
 import {
   Button,
@@ -524,12 +525,51 @@ const App = () => {
     setAgents(prev => prev.map(a => ({ ...a, status: 'idle', message: 'Waiting...' })));
   };
 
-  const handleShareReport = () => {
+  const handleShareReport = async () => {
     if (!result || !currentUser) return;
-    const report = `...`; // (Truncated for brevity, logic unchanged)
-    navigator.clipboard.writeText(report);
-    setShowCopyFeedback(true);
-    setTimeout(() => setShowCopyFeedback(false), 2000);
+
+    try {
+      const element = document.getElementById('triage-report-content');
+      if (!element) return;
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        backgroundColor: isDark ? '#000000' : '#ffffff',
+        useCORS: true
+      });
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], 'aura-triage-report.png', { type: 'image/png' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'AURA Medical Assessment',
+            text: `AURA Triage Report: ${result.conditionTitle} (${result.riskLevel})`,
+            files: [file]
+          });
+          setShowCopyFeedback(true);
+          setTimeout(() => setShowCopyFeedback(false), 2000);
+        } else {
+          // Fallback: download the image if sharing files isn't supported (e.g. desktop Chrome)
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'aura-triage-report.png';
+          a.click();
+          URL.revokeObjectURL(url);
+          setShowCopyFeedback(true);
+          setTimeout(() => setShowCopyFeedback(false), 2000);
+        }
+      }, 'image/png');
+    } catch (e) {
+      console.error('Failed to generate or share report image', e);
+      // Fallback to text copy
+      const reportText = `AURA Medical Assessment\n\nCondition: ${result.conditionTitle}\nRisk Level: ${result.riskLevel}\nSummary:\n${result.summary}`;
+      navigator.clipboard.writeText(reportText);
+      setShowCopyFeedback(true);
+      setTimeout(() => setShowCopyFeedback(false), 2000);
+    }
   };
 
   // --- Handlers ---
@@ -581,7 +621,7 @@ const App = () => {
     recognition.onend = () => setIsListening(false);
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
-      setSymptoms(prev => prev ? `${prev} ${transcript}` : transcript);
+      setSymptoms(prev => prev ? `${prev} ${transcript} ` : transcript);
     };
     recognitionRef.current = recognition;
     recognition.start();
@@ -622,7 +662,7 @@ const App = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` })
+          ...(token && { 'Authorization': `Bearer ${token} ` })
         },
         body: JSON.stringify({ lat: location.lat, lng: location.lng, facilityType })
       });
@@ -654,7 +694,7 @@ const App = () => {
       const base64Data = selectedImage ? selectedImage.split(',')[1] : undefined;
       const recentSessions = sessions.slice(0, 5);
       const historyContext = recentSessions.map(s =>
-        `- Date: ${new Date(s.timestamp).toLocaleDateString()}, Condition: ${s.result.conditionTitle}, Risk: ${s.result.riskLevel}`
+        `- Date: ${new Date(s.timestamp).toLocaleDateString()}, Condition: ${s.result.conditionTitle}, Risk: ${s.result.riskLevel} `
       ).join('\n');
       const token = localStorage.getItem('aura_token');
       if (!token) throw new Error("Authentication required");
@@ -663,7 +703,7 @@ const App = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token} `
         },
         body: JSON.stringify({
           symptoms: symptoms, // Use 'symptoms' here
@@ -1599,7 +1639,7 @@ const App = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[minmax(180px,auto)]">
+              <div id="triage-report-content" className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[minmax(180px,auto)] p-4 rounded-xl">
 
                 {/* 1. Main Diagnosis Card */}
                 <BentoCard className={cn(
