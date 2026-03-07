@@ -188,6 +188,14 @@ const App = () => {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
+  // Favicon switcher
+  useEffect(() => {
+    const link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+    if (link) {
+      link.href = isDark ? '/favicon.png' : '/favicon-light.png';
+    }
+  }, [isDark]);
+
   // Auto-scroll chat
   useEffect(() => {
     if (view === 'result') {
@@ -861,7 +869,11 @@ const App = () => {
         <div className="px-6 py-4 flex justify-between items-center max-w-7xl mx-auto">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => currentUser && setView('welcome')}>
             <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
-              <img src="/logo.png" alt="AURA Logo" className="w-full h-full object-contain" />
+              <img
+                src={isDark ? "/logo.png" : "/logo-light.png"}
+                alt="AURA Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
             <span className="font-display font-semibold text-lg tracking-tight">AURA</span>
           </div>
@@ -909,7 +921,11 @@ const App = () => {
             >
               <div className="mb-8 text-center space-y-2">
                 <div className="w-16 h-16 flex items-center justify-center mx-auto mb-6">
-                  <img src="/logo.png" alt="AURA Logo" className="w-full h-full object-contain filter dark:invert" />
+                  <img
+                    src={isDark ? "/logo.png" : "/logo-light.png"}
+                    alt="AURA Logo"
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <h1 className="text-3xl font-display font-medium">Welcome to AURA</h1>
                 <p className="text-muted-foreground flex items-center gap-1 justify-center">
