@@ -128,9 +128,3 @@ vercel
 ```
 3. Follow the CLI prompts to link your project.
 4. Set your environment variables (`MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`) in the Vercel Dashboard.
-
----
-
-<div align="center">
-  <p>Built with ❤️ and AI.</p>
-</div>
