@@ -1,9 +1,17 @@
-import express from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import authMiddleware from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Get current user data
+router.get('/me', authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('-passwordHash');
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        res.json({ user: { id: user._id, name: user.name, email: user.email } });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 router.post('/register', async (req, res) => {
     try {

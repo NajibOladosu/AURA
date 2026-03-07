@@ -350,7 +350,21 @@ const App = () => {
 
   const loadUserData = async (token: string) => {
     try {
-      // Fetch Profile
+      // 1. Verify token and get User Details
+      const authRes = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!authRes.ok) {
+        // Token expired or invalid
+        logoutUser();
+        return;
+      }
+
+      const authData = await authRes.json();
+      setCurrentUser(authData.user);
+
+      // 2. Fetch Profile
       const profileRes = await fetch('/api/profile', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -363,7 +377,7 @@ const App = () => {
         });
       }
 
-      // Fetch History
+      // 3. Fetch History
       const historyRes = await fetch('/api/history', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -380,6 +394,7 @@ const App = () => {
       }
     } catch (error) {
       console.error("Failed to load user data:", error);
+      // Optional: keep as guest if silent failure, or logout if auth failure
     }
   };
 
