@@ -233,8 +233,13 @@ const App = () => {
               body: JSON.stringify({ lat, lng })
             });
             if (res.ok) {
-              const data = await res.json();
-              setLocationName(data.name || "GPS Detected");
+              const contentType = res.headers.get("content-type");
+              if (contentType && contentType.includes("application/json")) {
+                const data = await res.json();
+                setLocationName(data.name || "GPS Detected");
+              } else {
+                setLocationName("GPS Detected");
+              }
             } else {
               setLocationName("GPS Detected");
             }
@@ -306,10 +311,16 @@ const App = () => {
         body: JSON.stringify(body)
       });
 
-      const data = await res.json();
+      let data;
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        throw new Error(`Server returned non-JSON response (${res.status})`);
+      }
 
       if (!res.ok) {
-        throw new Error(data.error || 'Authentication failed');
+        throw new Error(data?.error || 'Authentication failed');
       }
 
       if (authMode === 'login') {
