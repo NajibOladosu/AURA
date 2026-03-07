@@ -47,4 +47,4 @@ const sessionSchema = new mongoose.Schema({
     nearbyPlaces: [placeSchema]
 });
 
-export default mongoose.model('Session', sessionSchema);
+export default mongoose.models.Session || mongoose.model('Session', sessionSchema);

@@ -7,4 +7,4 @@ const userSchema = new mongoose.Schema({
     joinedAt: { type: Number, default: () => Date.now() }
 });
 
-export default mongoose.model('User', userSchema);
+export default mongoose.models.User || mongoose.model('User', userSchema);
