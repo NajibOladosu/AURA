@@ -21,14 +21,14 @@ const triageResultSchema = new mongoose.Schema({
         newConditions: [String],
         newMedications: [String]
     }
-}, { _id: false });
+}, { _id: false, bufferCommands: false });
 
 const chatMessageSchema = new mongoose.Schema({
     role: { type: String, enum: ['user', 'model'], required: true },
     text: { type: String, required: true },
     image: { type: String }, // Base64
     timestamp: { type: Number, default: () => Date.now() }
-}, { _id: false });
+}, { _id: false, bufferCommands: false });
 
 const placeSchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -37,7 +37,7 @@ const placeSchema = new mongoose.Schema({
     userRatingCount: Number,
     googleMapsUri: String,
     websiteUri: String
-}, { _id: false });
+}, { _id: false, bufferCommands: false });
 
 const sessionSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -45,6 +45,6 @@ const sessionSchema = new mongoose.Schema({
     result: { type: triageResultSchema, required: true },
     chatHistory: [chatMessageSchema],
     nearbyPlaces: [placeSchema]
-});
+}, { bufferCommands: false });
 
 export default mongoose.models.Session || mongoose.model('Session', sessionSchema);

@@ -3,12 +3,14 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 
+// Initialize configuration immediately
+dotenv.config();
+mongoose.set('bufferCommands', false);
+
 import authRoutes from './routes/auth.js';
 import profileRoutes from './routes/profile.js';
 import historyRoutes from './routes/history.js';
 import geminiRoutes from './routes/gemini.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

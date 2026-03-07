@@ -5,6 +5,6 @@ const profileSchema = new mongoose.Schema({
     allergies: [{ type: String }],
     conditions: [{ type: String }],
     medications: [{ type: String }]
-});
+}, { bufferCommands: false });
 
 export default mongoose.models.Profile || mongoose.model('Profile', profileSchema);
