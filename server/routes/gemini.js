@@ -113,7 +113,7 @@ router.post('/triage', authMiddleware, async (req, res) => {
         });
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: { parts },
             config: {
                 responseMimeType: "application/json",
@@ -188,7 +188,7 @@ router.post('/chat', authMiddleware, async (req, res) => {
         parts.push({ text: promptText });
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: { parts },
             config: {
                 systemInstruction: "You are a helpful, calm, and professional medical consultant."
@@ -208,7 +208,7 @@ router.post('/places', authMiddleware, async (req, res) => {
 
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: `
                 Task: Find the top 3 ${facilityType} locations strictly near Lat: ${lat}, Lng: ${lng}.
                 
@@ -265,7 +265,7 @@ router.post('/geocode', authMiddleware, async (req, res) => {
 
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: `Get the latitude, longitude and standard formatted address for "${locationName}". Return strictly JSON: { "lat": number, "lng": number, "address": "string" }.`,
             config: {
                 responseMimeType: "application/json"
@@ -286,7 +286,7 @@ router.post('/reverse-geocode', authMiddleware, async (req, res) => {
 
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: `What is the City, Region (and Country if applicable) for coordinates ${lat}, ${lng}? Return ONLY the location name string (e.g. "San Francisco, CA"). Do not include other text.`,
         });
 

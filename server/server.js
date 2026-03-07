@@ -25,26 +25,35 @@ app.use('/api/ai', geminiRoutes);
 
 // Database connection
 const connectDB = async () => {
+    if (mongoose.connection.readyState >= 1) return;
     try {
         if (!process.env.MONGO_URI) {
-            console.warn("MONGO_URI is missing from .env. The server will start, but database connection will fail.");
+            console.error("MONGO_URI is missing from environment variables.");
             return;
         }
         await mongoose.connect(process.env.MONGO_URI);
         console.log('MongoDB Connected Successfully');
     } catch (error) {
         console.error('MongoDB Connection Error:', error);
-        process.exit(1);
     }
 };
 
-// Start Server
-app.listen(PORT, async () => {
+// Middleware to ensure DB connection on every request (useful for serverless)
+app.use(async (req, res, next) => {
     await connectDB();
-    console.log(`Server running on port ${PORT}`);
+    next();
 });
 
 // Basic health check route
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'Aura Backend is running!' });
+    res.json({ status: 'Aura Backend is running!', db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' });
 });
+
+// Start Server locally
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`Server running locally on port ${PORT}`);
+    });
+}
+
+export default app;
