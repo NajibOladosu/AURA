@@ -208,7 +208,7 @@ const App = () => {
 
           try {
             const token = localStorage.getItem('aura_token');
-            const res = await fetch('http://localhost:5000/api/ai/reverse-geocode', {
+            const res = await fetch('/api/ai/reverse-geocode', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -242,7 +242,7 @@ const App = () => {
     setIsLocating(true);
     try {
       const token = localStorage.getItem('aura_token');
-      const res = await fetch('http://localhost:5000/api/ai/geocode', {
+      const res = await fetch('/api/ai/geocode', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -284,7 +284,7 @@ const App = () => {
       const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
       const body = authMode === 'login' ? { email: authEmail, password: authPassword } : { name: authName, email: authEmail, password: authPassword };
 
-      const res = await fetch(`http://localhost:5000${endpoint}`, {
+      const res = await fetch(`${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -335,7 +335,7 @@ const App = () => {
   const loadUserData = async (token: string) => {
     try {
       // Fetch Profile
-      const profileRes = await fetch('http://localhost:5000/api/profile', {
+      const profileRes = await fetch('/api/profile', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (profileRes.ok) {
@@ -348,7 +348,7 @@ const App = () => {
       }
 
       // Fetch History
-      const historyRes = await fetch('http://localhost:5000/api/history', {
+      const historyRes = await fetch('/api/history', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (historyRes.ok) {
@@ -380,7 +380,7 @@ const App = () => {
     if (!token) return;
 
     try {
-      await fetch('http://localhost:5000/api/profile', {
+      await fetch('/api/profile', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -414,7 +414,7 @@ const App = () => {
     if (!token) return;
 
     try {
-      const res = await fetch('http://localhost:5000/api/history', {
+      const res = await fetch('/api/history', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -446,7 +446,7 @@ const App = () => {
     if (!token) return;
 
     try {
-      await fetch(`http://localhost:5000/api/history/${sessionId}`, {
+      await fetch(`/api/history/${sessionId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -467,7 +467,7 @@ const App = () => {
     if (!token) return;
 
     try {
-      await fetch(`http://localhost:5000/api/history/${id}`, {
+      await fetch(`/api/history/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -489,7 +489,7 @@ const App = () => {
     const token = localStorage.getItem('aura_token');
     if (token) {
       try {
-        await fetch(`http://localhost:5000/api/history/${id}`, {
+        await fetch(`/api/history/${id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -658,7 +658,7 @@ const App = () => {
     setLoadingPlaces(true);
     try {
       const token = localStorage.getItem('aura_token');
-      const res = await fetch('http://localhost:5000/api/ai/places', {
+      const res = await fetch('/api/ai/places', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -699,7 +699,7 @@ const App = () => {
       const token = localStorage.getItem('aura_token');
       if (!token) throw new Error("Authentication required");
 
-      const response = await fetch('http://localhost:5000/api/ai/triage', {
+      const response = await fetch('/api/ai/triage', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -783,7 +783,7 @@ const App = () => {
       const token = localStorage.getItem('aura_token');
       if (!token) throw new Error("Authentication required");
 
-      const response = await fetch('http://localhost:5000/api/ai/chat', {
+      const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
