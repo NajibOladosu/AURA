@@ -188,13 +188,21 @@ const App = () => {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // Favicon switcher
+  // Favicon switcher based on system theme
   useEffect(() => {
-    const link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
-    if (link) {
-      link.href = isDark ? '/favicon.png' : '/favicon-light.png';
-    }
-  }, [isDark]);
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const updateFavicon = (e: MediaQueryListEvent | MediaQueryList) => {
+      const link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+      if (link) {
+        // Light icon for Dark system theme, Dark icon for Light system theme
+        link.href = e.matches ? '/favicon-light.png' : '/favicon.png';
+      }
+    };
+
+    updateFavicon(mediaQuery);
+    mediaQuery.addEventListener('change', updateFavicon);
+    return () => mediaQuery.removeEventListener('change', updateFavicon);
+  }, []);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -870,7 +878,7 @@ const App = () => {
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => currentUser && setView('welcome')}>
             <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
               <img
-                src={isDark ? "/logo.png" : "/logo-light.png"}
+                src={isDark ? "/logo-light.png" : "/logo.png"}
                 alt="AURA Logo"
                 className="w-full h-full object-contain"
               />
@@ -922,7 +930,7 @@ const App = () => {
               <div className="mb-8 text-center space-y-2">
                 <div className="w-16 h-16 flex items-center justify-center mx-auto mb-6">
                   <img
-                    src={isDark ? "/logo.png" : "/logo-light.png"}
+                    src={isDark ? "/logo-light.png" : "/logo.png"}
                     alt="AURA Logo"
                     className="w-full h-full object-contain"
                   />
