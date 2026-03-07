@@ -46,7 +46,7 @@ Follow these instructions to set up and run the AURA application locally.
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18 or higher recommended)
+- [Node.js](https://nodejs.org/) (v22 or higher recommended)
 - A [MongoDB](https://www.mongodb.com/) cluster (or local instance)
 - A [Google Gemini API Key](https://aistudio.google.com/)
 
@@ -96,7 +96,7 @@ Start the frontend development server:
 ```bash
 npm run dev
 ```
-*(The frontend will start and typically be accessible at `http://localhost:5173` or `http://localhost:3000`)*
+*(The frontend will start on `http://localhost:3000`. All API requests to `/api/*` are automatically proxied to the backend on port 5000 via Vite proxy configuration.)*
 
 ---
 
@@ -114,6 +114,11 @@ For localized orchestration and ensuring environment parity, AURA is fully conta
 docker-compose up --build
 ```
 The application will be accessible at `http://localhost:3000`.
+
+### Docker Hub Images
+The images are also available on Docker Hub:
+- **Server**: `najiboladosu/aura-server:latest`
+- **Client**: `najiboladosu/aura-client:latest`
 
 ---
 
