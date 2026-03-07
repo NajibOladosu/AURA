@@ -860,8 +860,8 @@ const App = () => {
       <header className="fixed top-0 w-full z-50 bg-background/40 backdrop-blur-md border-b border-border/50">
         <div className="px-6 py-4 flex justify-between items-center max-w-7xl mx-auto">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => currentUser && setView('welcome')}>
-            <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center">
-              <Sparkles size={16} strokeWidth={2.5} />
+            <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
+              <img src="/logo.png" alt="AURA Logo" className="w-full h-full object-contain" />
             </div>
             <span className="font-display font-semibold text-lg tracking-tight">AURA</span>
           </div>
@@ -908,8 +908,8 @@ const App = () => {
               className="flex flex-col items-center justify-center w-full max-w-md mx-auto"
             >
               <div className="mb-8 text-center space-y-2">
-                <div className="w-16 h-16 rounded-full bg-foreground text-background flex items-center justify-center mx-auto mb-6">
-                  <Sparkles size={32} strokeWidth={2.5} />
+                <div className="w-16 h-16 flex items-center justify-center mx-auto mb-6">
+                  <img src="/logo.png" alt="AURA Logo" className="w-full h-full object-contain filter dark:invert" />
                 </div>
                 <h1 className="text-3xl font-display font-medium">Welcome to AURA</h1>
                 <p className="text-muted-foreground flex items-center gap-1 justify-center">
