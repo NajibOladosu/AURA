@@ -30,16 +30,31 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
+        console.log(`[LOGIN] Attempt for: ${email}`);
+
+        if (!process.env.MONGO_URI) {
+            console.error("[LOGIN] CRITICAL: MONGO_URI is missing from environment variables.");
+        }
 
         // Find user
+        console.log(`[LOGIN] Querying database for user: ${email}`);
         const user = await User.findOne({ email });
-        if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+
+        if (!user) {
+            console.log(`[LOGIN] Failed: User not found (${email})`);
+            return res.status(400).json({ error: 'Invalid credentials' });
+        }
 
         // Compare password
+        console.log(`[LOGIN] User found, comparing password for: ${email}`);
         const isMatch = await bcrypt.compare(password, user.passwordHash);
-        if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
+        if (!isMatch) {
+            console.log(`[LOGIN] Failed: Password mismatch (${email})`);
+            return res.status(400).json({ error: 'Invalid credentials' });
+        }
 
         // Generate JWT
+        console.log(`[LOGIN] Success, generating token for: ${email}`);
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '7d' });
 
         res.json({
@@ -47,8 +62,16 @@ router.post('/login', async (req, res) => {
             user: { id: user._id, name: user.name, email: user.email }
         });
     } catch (error) {
-        console.error('Login Error:', error);
-        res.status(500).json({ error: 'Server error', message: error.message });
+        console.error('[LOGIN] ERROR DETAIL:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+        res.status(500).json({
+            error: 'Server error',
+            details: error.message,
+            type: error.name
+        });
     }
 });
 

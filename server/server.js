@@ -26,15 +26,33 @@ app.use('/api/ai', geminiRoutes);
 // Database connection
 const connectDB = async () => {
     if (mongoose.connection.readyState >= 1) return;
+
+    // Disable buffering for serverless environments to avoid timeout headaches
+    mongoose.set('bufferCommands', false);
+
     try {
-        if (!process.env.MONGO_URI) {
-            console.error("MONGO_URI is missing from environment variables.");
+        const uri = process.env.MONGO_URI;
+        if (!uri) {
+            console.error("CRITICAL: MONGO_URI is missing from environment variables.");
             return;
         }
-        await mongoose.connect(process.env.MONGO_URI);
+
+        // Diagnostic log (Masked for safety)
+        const maskedUri = uri.replace(/:([^@]+)@/, ":****@");
+        console.log(`Attempting to connect to MongoDB with URI: ${maskedUri}`);
+
+        await mongoose.connect(uri, {
+            serverSelectionTimeoutMS: 8000, // Timeout after 8s
+            socketTimeoutMS: 45000,
+            heartbeatFrequencyMS: 10000,
+        });
         console.log('MongoDB Connected Successfully');
     } catch (error) {
-        console.error('MongoDB Connection Error:', error);
+        console.error('MongoDB Connection Error:', {
+            message: error.message,
+            code: error.code,
+            name: error.name
+        });
     }
 };
 
