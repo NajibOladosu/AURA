@@ -137,9 +137,9 @@ router.post('/triage', authMiddleware, async (req, res) => {
 
     } catch (error) {
         console.error("AI Triage Request Payload:", {
-            symptomsLength: symptoms?.length,
-            hasImage: !!base64Image,
-            profile: !!userProfile
+            symptomsLength: req.body?.symptoms?.length,
+            hasImage: !!req.body?.base64Image,
+            profile: !!req.body?.userProfile
         });
         console.error("AI Triage Detailed Error:", {
             message: error.message,
