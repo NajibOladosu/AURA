@@ -14,13 +14,13 @@ With integrated **geolocation services**, AURA triangulates your exact coordinat
 
 ## ✨ Key Features
 
-- **🤖 AI Symptom Analysis:** Powered by Google Gemini 2.5 Flash for high-speed, accurate medical triage.
-- **📍 Location-Aware:** Automatically detects your location to suggest nearby medical facilities (uses browser Geolocation API and Google Maps integrations).
+- **🤖 AI Symptom Analysis:** Powered by Google's latest Gemini 2.5 Flash model for high-speed, accurate medical triage using the new `@google/genai` SDK.
+- **📍 Location-Aware:** Automatically detects your location and uses Google Search Grounding to suggest nearby medical facilities.
 - **🎙️ Multi-Modal Input:** Describe your symptoms via text, use the built-in speech-to-text voice recognition, or upload images/photos of visual symptoms.
 - **🚨 Emergency Detection:** Instant, highlighted alerts for life-threatening conditions with a direct "Call Emergency Services" action.
 - **📄 Shareable Reports:** Generate shareable image reports of your triage assessment using the Web Share API.
-- **🔒 Secure & Private:** Features backend authentication (JWT) and a specialized AI agent step designed to scrub PII (Personally Identifiable Information) before queries are sent to the AI.
-- **🌓 Dark/Light Mode:** Full theming support for comfortable use in any environment.
+- **🔒 Secure & Private:** Features robust backend authentication (JWT) with reliable session persistence (you stay logged in after refresh), and a specialized AI agent step designed to scrub PII (Personally Identifiable Information) before queries are sent to the AI.
+- **🌓 Adaptive Theming:** Full dark/light mode support with dynamic, theme-aware branding and logos.
 
 ---
 
