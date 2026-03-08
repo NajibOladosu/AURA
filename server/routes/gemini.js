@@ -112,22 +112,17 @@ router.post('/triage', authMiddleware, async (req, res) => {
             `
         });
 
-        const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            systemInstruction: "You are a safe, helpful, and professional medical triage AI. Always prioritize patient safety. If guidelines are provided, use them."
-        });
-
-        const result = await model.generateContent({
-            contents: [{ role: 'user', parts: parts }],
-            generationConfig: {
+            contents: parts,
+            config: {
                 responseMimeType: "application/json",
                 responseSchema: TRIAGE_SCHEMA,
+                systemInstruction: "You are a safe, helpful, and professional medical triage AI. Always prioritize patient safety. If guidelines are provided, use them."
             }
         });
 
-        const response = await result.response;
-        const text = response.text();
+        const text = response.text;
         if (!text) {
             console.error("AI Response missing text:", response);
             throw new Error("No response from AI");
@@ -208,18 +203,15 @@ router.post('/chat', authMiddleware, async (req, res) => {
         }
         parts.push({ text: promptText });
 
-        const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            systemInstruction: "You are a helpful, calm, and professional medical consultant."
+            contents: parts,
+            config: {
+                systemInstruction: "You are a helpful, calm, and professional medical consultant."
+            }
         });
 
-        const result = await model.generateContent({
-            contents: [{ role: 'user', parts: parts }]
-        });
-
-        const response = await result.response;
-        res.json({ reply: response.text() || "I apologize, I couldn't process that request." });
+        res.json({ reply: response.text || "I apologize, I couldn't process that request." });
     } catch (error) {
         console.error("Chat Error:", error);
         res.status(500).json({ error: 'Error processing chat request' });
@@ -230,17 +222,10 @@ router.post('/places', authMiddleware, async (req, res) => {
         const { lat, lng, facilityType } = req.body;
         if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
 
-        const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            tools: [{ googleMaps: {} }]
-        });
-
-        const result = await model.generateContent({
-            contents: [{
-                role: 'user',
-                parts: [{
-                    text: `
+            contents: `
                 Task: Find the top 3 ${facilityType} locations strictly near Lat: ${lat}, Lng: ${lng}.
                 
                 CRITICAL LOCATION RULES:
@@ -256,18 +241,18 @@ router.post('/places', authMiddleware, async (req, res) => {
                 - Do NOT write conversational text.
                 - Do NOT use markdown code blocks.
                 - Do NOT use JSON code blocks.
-            `
-                }]
-            }],
-            toolConfig: {
-                functionCallingConfig: {
-                    mode: "AUTO"
+            `,
+            config: {
+                tools: [{ googleMaps: {} }],
+                toolConfig: {
+                    retrievalConfig: {
+                        latLng: { latitude: lat, longitude: lng }
+                    }
                 }
             }
         });
 
-        const response = await result.response;
-        let text = response.text() || "[]";
+        let text = response.text || "[]";
         let placesRaw;
         try {
             placesRaw = JSON.parse(text);
@@ -295,20 +280,16 @@ router.post('/geocode', authMiddleware, async (req, res) => {
         const { locationName } = req.body;
         if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
 
-        const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-        const result = await model.generateContent({
-            contents: [{
-                role: 'user',
-                parts: [{ text: `Get the latitude, longitude and standard formatted address for "${locationName}". Return strictly JSON: { "lat": number, "lng": number, "address": "string" }.` }]
-            }],
-            generationConfig: {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Get the latitude, longitude and standard formatted address for "${locationName}". Return strictly JSON: { "lat": number, "lng": number, "address": "string" }.`,
+            config: {
                 responseMimeType: "application/json"
             }
         });
 
-        const response = await result.response;
-        res.json(JSON.parse(response.text() || "{}"));
+        res.json(JSON.parse(response.text || "{}"));
     } catch (e) {
         console.error("Geocoding failed", e);
         res.status(500).json({ error: 'Failed to geocode' });
@@ -320,14 +301,13 @@ router.post('/reverse-geocode', authMiddleware, async (req, res) => {
         const { lat, lng } = req.body;
         if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
 
-        const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-        const result = await model.generateContent(
-            `What is the City, Region (and Country if applicable) for coordinates ${lat}, ${lng}? Return ONLY the location name string (e.g. "San Francisco, CA"). Do not include other text.`
-        );
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `What is the City, Region (and Country if applicable) for coordinates ${lat}, ${lng}? Return ONLY the location name string (e.g. "San Francisco, CA"). Do not include other text.`
+        });
 
-        const response = await result.response;
-        res.json({ name: response.text()?.trim() || "Unknown Location" });
+        res.json({ name: response.text?.trim() || "Unknown Location" });
     } catch (e) {
         console.error("Reverse geocoding failed", e);
         res.status(500).json({ error: 'Failed to reverse geocode' });
