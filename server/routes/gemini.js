@@ -228,15 +228,17 @@ router.post('/places', authMiddleware, async (req, res) => {
             contents: `
                 Task: Find the top 3 ${facilityType} locations strictly near Lat: ${lat}, Lng: ${lng}.
                 
+                You must search the web to find real medical facilities near these exact coordinates.
+                
                 CRITICAL LOCATION RULES:
-                1. Results MUST be within 50km of the provided coordinates.
+                1. Results MUST be strictly within a 50km radius of Lat: ${lat}, Lng: ${lng}.
                 2. Do NOT infer a location if you cannot find exact matches.
-                3. Do NOT provide results from other countries.
+                3. Do NOT provide results from other countries or distant cities.
                 
                 Output Requirements:
                 - Output ONLY a JSON array.
                 - Structure: [{"name": "Place Name", "rating": "4.5", "address": "Full Address with City/Zip", "googleMapsUri": "https://maps.google.com/..."}]
-                - If 'googleMapsUri' is unavailable from the tool, leave it as an empty string.
+                - If 'googleMapsUri' is unavailable, provide a standard Google search URL for the place name and address.
                 - Ensure 'address' is complete.
                 - Do NOT write conversational text.
                 - Do NOT use markdown code blocks.
@@ -246,7 +248,10 @@ router.post('/places', authMiddleware, async (req, res) => {
                 tools: [{ googleMaps: {} }],
                 toolConfig: {
                     retrievalConfig: {
-                        latLng: { latitude: lat, longitude: lng }
+                        latLng: {
+                            latitude: lat,
+                            longitude: lng
+                        }
                     }
                 }
             }
