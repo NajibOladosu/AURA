@@ -110,47 +110,49 @@ router.post('/triage', authMiddleware, async (req, res) => {
                 
                 INPUT SYMPTOMS (Sanitized): "${safeSymptoms}"
             `
+        });
+
         const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({
-                model: 'gemini-2.5-flash',
-                systemInstruction: "You are a safe, helpful, and professional medical triage AI. Always prioritize patient safety. If guidelines are provided, use them."
-            });
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-2.5-flash',
+            systemInstruction: "You are a safe, helpful, and professional medical triage AI. Always prioritize patient safety. If guidelines are provided, use them."
+        });
 
-            const result = await model.generateContent({
-                contents: [{ role: 'user', parts: parts }],
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: TRIAGE_SCHEMA,
-                }
-            });
-
-            const response = await result.response;
-            const text = response.text();
-            if(!text) {
-                console.error("AI Response missing text:", response);
-                throw new Error("No response from AI");
+        const result = await model.generateContent({
+            contents: [{ role: 'user', parts: parts }],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: TRIAGE_SCHEMA,
             }
+        });
+
+        const response = await result.response;
+        const text = response.text();
+        if (!text) {
+            console.error("AI Response missing text:", response);
+            throw new Error("No response from AI");
+        }
 
         res.json(JSON.parse(text));
 
-        } catch (error) {
-            console.error("AI Triage Request Payload:", {
-                symptomsLength: symptoms?.length,
-                hasImage: !!base64Image,
-                profile: !!userProfile
-            });
-            console.error("AI Triage Detailed Error:", {
-                message: error.message,
-                stack: error.stack,
-                response: error.response?.data
-            });
-            res.status(500).json({
-                error: 'Error processing AI request',
-                details: error.message,
-                type: error.name
-            });
-        }
-    });
+    } catch (error) {
+        console.error("AI Triage Request Payload:", {
+            symptomsLength: symptoms?.length,
+            hasImage: !!base64Image,
+            profile: !!userProfile
+        });
+        console.error("AI Triage Detailed Error:", {
+            message: error.message,
+            stack: error.stack,
+            response: error.response?.data
+        });
+        res.status(500).json({
+            error: 'Error processing AI request',
+            details: error.message,
+            type: error.name
+        });
+    }
+});
 
 router.post('/chat', authMiddleware, async (req, res) => {
     try {
