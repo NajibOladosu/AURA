@@ -211,6 +211,47 @@ const App = () => {
     }
   }, [chatHistory, view, isChatLoading]);
 
+  // Refetch data when entering dynamic views to ensure UI matches database
+  useEffect(() => {
+    const token = localStorage.getItem('aura_token');
+    if (token && (view === 'history' || view === 'profile' || view === 'welcome')) {
+      // Create a background fetch function to update state silently
+      const silentRefresh = async () => {
+        try {
+          // Fetch Profile
+          const profileRes = await fetch('/api/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            setUserProfile({
+              allergies: profileData.allergies || [],
+              conditions: profileData.conditions || [],
+              medications: profileData.medications || []
+            });
+          }
+
+          // Fetch History
+          const historyRes = await fetch('/api/history', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (historyRes.ok) {
+            const historyData = await historyRes.json();
+            const mappedHistory = historyData.map((session: any) => ({
+              ...session,
+              id: session._id
+            }));
+            setSessions(mappedHistory);
+          }
+        } catch (error) {
+          console.error("Silent refresh failed:", error);
+        }
+      };
+
+      silentRefresh();
+    }
+  }, [view]);
+
   // --- Logic ---
 
   const refreshLocation = () => {
