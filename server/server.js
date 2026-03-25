@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 
 // Initialize configuration immediately
 dotenv.config();
@@ -62,11 +64,30 @@ app.use(async (req, res, next) => {
     }
 });
 
+// Rate limiting for unauthenticated AI requests
+const aiRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 30, // 30 requests per window per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests. Please sign in or try again later.' },
+    skip: (req) => {
+        const token = req.header('Authorization')?.split(' ')[1];
+        if (token) {
+            try {
+                jwt.verify(token, process.env.JWT_SECRET);
+                return true; // Authenticated users skip rate limit
+            } catch { return false; }
+        }
+        return false;
+    }
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/history', historyRoutes);
-app.use('/api/ai', geminiRoutes);
+app.use('/api/ai', aiRateLimiter, geminiRoutes);
 
 // Basic health check route
 app.get('/api/health', (req, res) => {

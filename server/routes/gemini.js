@@ -300,7 +300,7 @@ router.post('/geocode', async (req, res) => {
     }
 });
 
-router.post('/reverse-geocode', authMiddleware, async (req, res) => {
+router.post('/reverse-geocode', async (req, res) => {
     try {
         const { lat, lng } = req.body;
         if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
