@@ -1,5 +1,4 @@
 import express from 'express';
-import authMiddleware from '../middleware/auth.js';
 import { GoogleGenAI } from '@google/genai';
 
 const router = express.Router();
@@ -62,7 +61,7 @@ const TRIAGE_SCHEMA = {
     required: ["riskLevel", "riskScore", "conditionTitle", "summary", "medicalAnalysis", "immediateActions", "suggestedFacilities", "citations", "disclaimer"]
 };
 
-router.post('/triage', authMiddleware, async (req, res) => {
+router.post('/triage', async (req, res) => {
     try {
         const { symptoms, userProfile, historyContext, base64Image, mimeType } = req.body;
 
@@ -149,7 +148,7 @@ router.post('/triage', authMiddleware, async (req, res) => {
     }
 });
 
-router.post('/chat', authMiddleware, async (req, res) => {
+router.post('/chat', async (req, res) => {
     try {
         const { history, triageContext, userProfile, newMessage, base64Image } = req.body;
 
@@ -217,7 +216,7 @@ router.post('/chat', authMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Error processing chat request' });
     }
 });
-router.post('/places', authMiddleware, async (req, res) => {
+router.post('/places', async (req, res) => {
     try {
         const { lat, lng, facilityType } = req.body;
         if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
@@ -280,7 +279,7 @@ router.post('/places', authMiddleware, async (req, res) => {
     }
 });
 
-router.post('/geocode', authMiddleware, async (req, res) => {
+router.post('/geocode', async (req, res) => {
     try {
         const { locationName } = req.body;
         if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
