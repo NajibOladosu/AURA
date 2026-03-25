@@ -7,8 +7,11 @@ const authMiddleware = (req, res, next) => {
     if (!token) return res.status(401).json({ error: 'No token, authorization denied' });
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
-        req.user = decoded; // Adds user {id: ...} to request
+        if (!process.env.JWT_SECRET) {
+            return res.status(500).json({ error: 'Server configuration error' });
+        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
         next();
     } catch (error) {
         res.status(401).json({ error: 'Token is not valid' });
