@@ -658,6 +658,81 @@ const App = () => {
     }
   };
 
+  const handleMigration = async (skip: boolean = false) => {
+    const token = localStorage.getItem('aura_token');
+    if (!token || !pendingMigration) {
+      loadUserData(token || '');
+      setView('welcome');
+      setPendingMigration(null);
+      return;
+    }
+
+    if (skip) {
+      localStorage.removeItem('aura_guest_sessions');
+      localStorage.removeItem('aura_guest_profile');
+      setPendingMigration(null);
+      loadUserData(token);
+      setView('welcome');
+      return;
+    }
+
+    setMigrationLoading(true);
+    try {
+      // Migrate selected sessions
+      for (const session of pendingMigration.sessions) {
+        if (selectedMigrationIds.has(session.id)) {
+          await fetch('/api/history', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              result: session.result,
+              chatHistory: session.chatHistory,
+              nearbyPlaces: session.nearbyPlaces
+            })
+          });
+        }
+      }
+
+      // Migrate profile if selected
+      if (migrateProfile) {
+        const { profile } = pendingMigration;
+        if (profile.allergies.length > 0 || profile.conditions.length > 0 || profile.medications.length > 0) {
+          await fetch('/api/profile', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(profile)
+          });
+        }
+      }
+
+      // Clear guest data
+      localStorage.removeItem('aura_guest_sessions');
+      localStorage.removeItem('aura_guest_profile');
+      setPendingMigration(null);
+      loadUserData(token);
+      setView('welcome');
+    } catch (e) {
+      console.error("Migration failed:", e);
+    } finally {
+      setMigrationLoading(false);
+    }
+  };
+
+  const toggleMigrationSession = (id: string) => {
+    setSelectedMigrationIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const loadSession = (session: HistorySession) => {
     setResult(session.result);
     setChatHistory(session.chatHistory);
@@ -1174,7 +1249,96 @@ const App = () => {
             </motion.div>
           )}
 
-          {/* ... (Welcome view unchanged) ... */}
+          {/* --- MIGRATE GUEST DATA --- */}
+          {view === 'migrate' && pendingMigration && (
+            <motion.div
+              key="migrate"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-lg mx-auto space-y-6"
+            >
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-display font-semibold">Import Guest Data</h2>
+                <p className="text-sm text-muted-foreground">Select which guest data to save to your account.</p>
+              </div>
+
+              {/* Sessions */}
+              {pendingMigration.sessions.length > 0 && (
+                <BentoCard>
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <HistoryIcon size={16} /> Assessments ({selectedMigrationIds.size}/{pendingMigration.sessions.length})
+                  </h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {pendingMigration.sessions.map(session => (
+                      <label
+                        key={session.id}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedMigrationIds.has(session.id)}
+                          onChange={() => toggleMigrationSession(session.id)}
+                          className="rounded border-border"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{session.result.conditionTitle}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(session.timestamp).toLocaleDateString()} • {session.result.riskLevel}
+                          </p>
+                        </div>
+                        <Badge variant={session.result.riskLevel === 'Emergency' ? 'red' : session.result.riskLevel === 'Urgent' ? 'amber' : 'emerald'}>
+                          {session.result.riskLevel}
+                        </Badge>
+                      </label>
+                    ))}
+                  </div>
+                </BentoCard>
+              )}
+
+              {/* Profile */}
+              {(pendingMigration.profile.allergies.length > 0 || pendingMigration.profile.conditions.length > 0 || pendingMigration.profile.medications.length > 0) && (
+                <BentoCard>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={migrateProfile}
+                      onChange={() => setMigrateProfile(!migrateProfile)}
+                      className="rounded border-border"
+                    />
+                    <div>
+                      <h3 className="text-sm font-semibold flex items-center gap-2">
+                        <Fingerprint size={16} /> Import Guest Profile
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {pendingMigration.profile.allergies.length} allergies, {pendingMigration.profile.conditions.length} conditions, {pendingMigration.profile.medications.length} medications
+                      </p>
+                    </div>
+                  </label>
+                </BentoCard>
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => handleMigration(true)}
+                  disabled={migrationLoading}
+                >
+                  Skip
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => handleMigration(false)}
+                  loading={migrationLoading}
+                >
+                  Save Selected
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
           {/* --- 1. WELCOME --- */}
           {view === 'welcome' && (
             <motion.div
