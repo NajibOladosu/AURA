@@ -177,13 +177,13 @@ const App = () => {
     // Check for existing session
     const savedToken = localStorage.getItem('aura_token');
     if (savedToken) {
-      // Assuming token contains user info or we can fetch it
-      // For now, we'll just try to load user data with the token
       loadUserData(savedToken);
-      setView('welcome');
     } else {
-      setView('auth');
+      // Load guest data from localStorage
+      setUserProfile(loadGuestProfile());
+      setSessions(loadGuestSessions());
     }
+    setView('welcome'); // Always start on welcome — no auth gate
 
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
@@ -213,42 +213,45 @@ const App = () => {
 
   // Refetch data when entering dynamic views to ensure UI matches database
   useEffect(() => {
-    const token = localStorage.getItem('aura_token');
-    if (token && (view === 'history' || view === 'profile' || view === 'welcome')) {
-      // Create a background fetch function to update state silently
-      const silentRefresh = async () => {
-        try {
-          // Fetch Profile
-          const profileRes = await fetch('/api/profile', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (profileRes.ok) {
-            const profileData = await profileRes.json();
-            setUserProfile({
-              allergies: profileData.allergies || [],
-              conditions: profileData.conditions || [],
-              medications: profileData.medications || []
+    if (view === 'history' || view === 'profile' || view === 'welcome') {
+      const token = localStorage.getItem('aura_token');
+      if (token) {
+        // Authenticated: refresh from server
+        const silentRefresh = async () => {
+          try {
+            const profileRes = await fetch('/api/profile', {
+              headers: { 'Authorization': `Bearer ${token}` }
             });
-          }
+            if (profileRes.ok) {
+              const profileData = await profileRes.json();
+              setUserProfile({
+                allergies: profileData.allergies || [],
+                conditions: profileData.conditions || [],
+                medications: profileData.medications || []
+              });
+            }
 
-          // Fetch History
-          const historyRes = await fetch('/api/history', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (historyRes.ok) {
-            const historyData = await historyRes.json();
-            const mappedHistory = historyData.map((session: any) => ({
-              ...session,
-              id: session._id
-            }));
-            setSessions(mappedHistory);
+            const historyRes = await fetch('/api/history', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (historyRes.ok) {
+              const historyData = await historyRes.json();
+              const mappedHistory = historyData.map((session: any) => ({
+                ...session,
+                id: session._id
+              }));
+              setSessions(mappedHistory);
+            }
+          } catch (error) {
+            console.error("Silent refresh failed:", error);
           }
-        } catch (error) {
-          console.error("Silent refresh failed:", error);
-        }
-      };
-
-      silentRefresh();
+        };
+        silentRefresh();
+      } else {
+        // Guest: refresh from localStorage
+        setUserProfile(loadGuestProfile());
+        setSessions(loadGuestSessions());
+      }
     }
   }, [view]);
 
@@ -517,75 +520,98 @@ const App = () => {
 
   const createSession = async (triageResult: TriageResult, initialChat: ChatMessage[], places: Place[] = []) => {
     const token = localStorage.getItem('aura_token');
-    if (!token) return;
 
-    try {
-      const res = await fetch('/api/history', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          result: triageResult,
-          chatHistory: initialChat,
-          nearbyPlaces: places
-        })
-      });
+    if (token) {
+      try {
+        const res = await fetch('/api/history', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            result: triageResult,
+            chatHistory: initialChat,
+            nearbyPlaces: places
+          })
+        });
 
-      if (res.ok) {
-        const newSession = await res.json();
-        const mappedSession = { ...newSession, id: newSession._id };
-        setSessions([mappedSession, ...sessions]);
-        setSessionId(mappedSession.id);
-        return mappedSession.id; // Return the new session ID
+        if (res.ok) {
+          const newSession = await res.json();
+          const mappedSession = { ...newSession, id: newSession._id };
+          setSessions([mappedSession, ...sessions]);
+          setSessionId(mappedSession.id);
+          return mappedSession.id;
+        }
+      } catch (e) {
+        console.error("Failed to create session", e);
       }
-    } catch (e) {
-      console.error("Failed to create session", e);
+      return '';
+    } else {
+      // Guest: store in localStorage
+      const guestId = `guest_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      const guestSession: HistorySession = {
+        id: guestId,
+        userId: 'guest',
+        timestamp: Date.now(),
+        result: triageResult,
+        chatHistory: initialChat,
+        nearbyPlaces: places
+      };
+      const updatedSessions = [guestSession, ...sessions];
+      setSessions(updatedSessions);
+      setSessionId(guestId);
+      saveGuestSessions(updatedSessions);
+      return guestId;
     }
-    return ''; // Return empty string if creation fails
   };
 
   const updateSessionChat = async (newChatHistory: ChatMessage[]) => {
     if (!sessionId) return;
     const token = localStorage.getItem('aura_token');
-    if (!token) return;
 
-    try {
-      await fetch(`/api/history/${sessionId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ chatHistory: newChatHistory })
-      });
+    const updated = sessions.map(s => s.id === sessionId ? { ...s, chatHistory: newChatHistory } : s);
+    setSessions(updated);
 
-      const updated = sessions.map(s => s.id === sessionId ? { ...s, chatHistory: newChatHistory } : s);
-      setSessions(updated);
-    } catch (e) {
-      console.error("Failed to update session chat", e);
+    if (token) {
+      try {
+        await fetch(`/api/history/${sessionId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ chatHistory: newChatHistory })
+        });
+      } catch (e) {
+        console.error("Failed to update session chat", e);
+      }
+    } else {
+      saveGuestSessions(updated);
     }
   };
 
   const updateSessionPlaces = async (id: string, places: Place[]) => {
     const token = localStorage.getItem('aura_token');
-    if (!token) return;
 
-    try {
-      await fetch(`/api/history/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ nearbyPlaces: places })
-      });
+    const updated = sessions.map(s => s.id === id ? { ...s, nearbyPlaces: places } : s);
+    setSessions(updated);
 
-      const updated = sessions.map(s => s.id === id ? { ...s, nearbyPlaces: places } : s);
-      setSessions(updated);
-    } catch (e) {
-      console.error("Failed to update session places", e);
+    if (token) {
+      try {
+        await fetch(`/api/history/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ nearbyPlaces: places })
+        });
+      } catch (e) {
+        console.error("Failed to update session places", e);
+      }
+    } else {
+      saveGuestSessions(updated);
     }
   };
 
@@ -606,6 +632,7 @@ const App = () => {
 
     const updatedSessions = sessions.filter(s => s.id !== id);
     setSessions(updatedSessions);
+    if (!token) saveGuestSessions(updatedSessions);
 
     if (sessionId === id) {
       handleNewScan();
@@ -803,13 +830,12 @@ const App = () => {
         `- Date: ${new Date(s.timestamp).toLocaleDateString()}, Condition: ${s.result.conditionTitle}, Risk: ${s.result.riskLevel} `
       ).join('\n');
       const token = localStorage.getItem('aura_token');
-      if (!token) throw new Error("Authentication required");
 
       const response = await fetch('/api/ai/triage', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: JSON.stringify({
           symptoms: symptoms, // Use 'symptoms' here
