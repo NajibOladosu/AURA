@@ -98,11 +98,11 @@ router.post('/triage', async (req, res) => {
                 You are AURA, an AI medical triage system.
                 
                 STEP 1: ANALYZE input symptoms and visual evidence.
-                STEP 2: RETRIEVE & APPLY the provided 'RELEVANT GUIDELINES' (RAG Context). You MUST cite these in the output.
+                STEP 2: APPLY the provided 'SAFETY GUIDELINES' to flag critical conditions. You MUST cite these in the output.
                 STEP 3: CROSS-REFERENCE with Patient History.
                 STEP 4: DETERMINE Urgency.
-                
-                [RAG - RELEVANT KNOWLEDGE BASE]
+
+                [SAFETY GUIDELINES]
                 ${retrievedDocs}
                 
                 ${profileText}

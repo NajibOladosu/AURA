@@ -151,7 +151,7 @@ const App = () => {
   // Agents State
   const [agents, setAgents] = useState<AgentState[]>([
     { name: 'PII Scrubbing Layer', status: 'idle', message: 'Sanitizing input...' },
-    { name: 'RAG Knowledge Base', status: 'idle', message: 'Retrieving WHO protocols...' },
+    { name: 'Safety Guidelines', status: 'idle', message: 'Matching safety protocols...' },
     { name: 'Clinical Reasoning', status: 'idle', message: 'Analyzing data...' },
     { name: 'Geospatial Grid', status: 'idle', message: 'Location locked.' }
   ]);
@@ -864,10 +864,10 @@ const App = () => {
     await new Promise(r => setTimeout(r, 800));
     updateAgent(0, 'complete', 'Input Sanitized.');
 
-    // Agent 2: RAG
-    updateAgent(1, 'working', 'Querying Vector DB...');
+    // Agent 2: Safety Guidelines
+    updateAgent(1, 'working', 'Matching safety protocols...');
     await new Promise(r => setTimeout(r, 1000));
-    updateAgent(1, 'complete', 'Protocol Found.');
+    updateAgent(1, 'complete', 'Guidelines applied.');
 
     // Agent 3: Clinical
     updateAgent(2, 'working', 'Analyzing symptoms...');
@@ -2087,12 +2087,12 @@ const App = () => {
                   </div>
                 </BentoCard>
 
-                {/* 4.5 Sources & Citations (New RAG Display) */}
+                {/* 4.5 Sources & Citations */}
                 {result.citations && result.citations.length > 0 && (
                   <BentoCard className="md:col-span-3 bg-secondary/10">
                     <div className="flex items-center gap-2 mb-4 text-muted-foreground">
                       <BookOpen size={18} />
-                      <span className="text-xs uppercase tracking-wider font-semibold">Verified Protocols (RAG)</span>
+                      <span className="text-xs uppercase tracking-wider font-semibold">Referenced Safety Protocols</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {result.citations.map((cite, i) => (
