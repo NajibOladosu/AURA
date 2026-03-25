@@ -450,29 +450,52 @@ const App = () => {
     }
   };
 
-  // Deprecated: Sessions are now handled automatically by the backend via /api/history POST and PUT
-  const saveSessionsToStorage = (updatedSessions: HistorySession[]) => {
-    // No-op for now, as individual actions will push to the backend
+  // --- Guest localStorage Helpers ---
+  const GUEST_PROFILE_KEY = 'aura_guest_profile';
+  const GUEST_SESSIONS_KEY = 'aura_guest_sessions';
+
+  const loadGuestProfile = (): UserProfile => {
+    try {
+      const stored = localStorage.getItem(GUEST_PROFILE_KEY);
+      return stored ? JSON.parse(stored) : { allergies: [], conditions: [], medications: [] };
+    } catch { return { allergies: [], conditions: [], medications: [] }; }
   };
 
-  // Deprecated: Profiles are now updated via the backend API
-  // This logic should be moved into specific handle update functions,
-  // but for now, we'll keep the UI state update and sync to backend.
-  const saveProfileToStorage = async (profile: UserProfile) => {
-    const token = localStorage.getItem('aura_token');
-    if (!token) return;
+  const saveGuestProfile = (profile: UserProfile) => {
+    localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile));
+  };
 
+  const loadGuestSessions = (): HistorySession[] => {
     try {
-      await fetch('/api/profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(profile)
-      });
-    } catch (e) {
-      console.error("Failed to save profile:", e);
+      const stored = localStorage.getItem(GUEST_SESSIONS_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  };
+
+  const saveGuestSessions = (updatedSessions: HistorySession[]) => {
+    // Cap at 20 most recent to avoid localStorage bloat
+    const capped = updatedSessions.slice(0, 20);
+    localStorage.setItem(GUEST_SESSIONS_KEY, JSON.stringify(capped));
+  };
+
+  const saveProfileToStorage = async (profile: UserProfile) => {
+    setUserProfile(profile);
+    const token = localStorage.getItem('aura_token');
+    if (token) {
+      try {
+        await fetch('/api/profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(profile)
+        });
+      } catch (e) {
+        console.error("Failed to save profile:", e);
+      }
+    } else {
+      saveGuestProfile(profile);
     }
   };
 
