@@ -42,6 +42,7 @@ import {
   Pill,
   FileText,
   LogOut,
+  LogIn,
   Fingerprint,
   TrendingUp,
   Share2,
@@ -659,7 +660,7 @@ const App = () => {
   };
 
   const handleShareReport = async () => {
-    if (!result || !currentUser) return;
+    if (!result) return;
 
     try {
       const element = document.getElementById('triage-report-content');
@@ -990,7 +991,7 @@ const App = () => {
       {/* Navigation */}
       <header className="fixed top-0 w-full z-50 bg-background/40 backdrop-blur-md border-b border-border/50">
         <div className="px-6 py-4 flex justify-between items-center max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => currentUser && setView('welcome')}>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('welcome')}>
             <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
               <img
                 src={isDark ? "/logo-light.png" : "/logo.png"}
@@ -1001,14 +1002,12 @@ const App = () => {
             <span className="font-display font-semibold text-lg tracking-tight">AURA</span>
           </div>
           <div className="flex items-center gap-3">
-            {currentUser && (
-              <button
-                onClick={() => setView('profile')}
-                className="hidden md:flex items-center gap-2 text-sm text-muted-foreground mr-2 bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-full border border-border/50 transition-colors"
-              >
-                <Fingerprint size={14} /> {currentUser.name}
-              </button>
-            )}
+            <button
+              onClick={() => setView('profile')}
+              className="hidden md:flex items-center gap-2 text-sm text-muted-foreground mr-2 bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-full border border-border/50 transition-colors"
+            >
+              <Fingerprint size={14} /> {currentUser ? currentUser.name : 'Guest Profile'}
+            </button>
             <Button
               variant="ghost"
               size="icon"
@@ -1019,9 +1018,13 @@ const App = () => {
               <Settings size={18} />
             </Button>
             <ThemeToggle isDark={isDark} toggle={toggleTheme} />
-            {currentUser && (
+            {currentUser ? (
               <Button variant="ghost" size="icon" onClick={logoutUser} className="ml-1 text-muted-foreground hover:text-destructive" title="Log Out">
                 <LogOut size={18} />
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={() => setView('auth')} className="ml-1 text-muted-foreground hover:text-primary">
+                <LogIn size={16} className="mr-1" /> Sign In
               </Button>
             )}
           </div>
@@ -1139,6 +1142,12 @@ const App = () => {
                   {authMode === 'login' ? 'Sign Up' : 'Log In'}
                 </button>
               </div>
+              <button
+                onClick={() => setView('welcome')}
+                className="mt-3 text-sm text-muted-foreground/70 hover:text-primary transition-colors"
+              >
+                Continue without signing in →
+              </button>
 
               <p className="mt-8 text-[10px] text-muted-foreground/40 text-center max-w-xs mx-auto">
                 <Lock size={10} className="inline mr-1" />
@@ -1162,7 +1171,7 @@ const App = () => {
                 <Badge variant="neutral" className="mb-4">SYSTEM ONLINE • V3.3</Badge>
                 <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-medium tracking-tight leading-[0.9]">
                   <span className="block text-2xl md:text-3xl font-normal text-muted-foreground mb-2">
-                    Hello, {currentUser?.name.split(' ')[0]}.
+                    {currentUser ? `Hello, ${currentUser.name.split(' ')[0]}.` : 'Hello.'}
                   </span>
                   Personal Health <br />
                   <span className="text-muted-foreground opacity-50">Intelligence.</span>
@@ -1737,6 +1746,18 @@ const App = () => {
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               className="w-full space-y-8 pb-12"
             >
+              {/* Guest Sign-in Prompt */}
+              {!currentUser && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between"
+                >
+                  <span className="text-sm text-muted-foreground">Sign in to save this assessment to your account</span>
+                  <Button size="sm" onClick={() => setView('auth')}>Sign In</Button>
+                </motion.div>
+              )}
+
               {/* Emergency Banner */}
               {result.riskLevel === 'Emergency' && (
                 <motion.div
