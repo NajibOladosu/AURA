@@ -913,13 +913,12 @@ const App = () => {
     try {
       const base64Data = chatImage ? chatImage.split(',')[1] : undefined;
       const token = localStorage.getItem('aura_token');
-      if (!token) throw new Error("Authentication required");
 
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: JSON.stringify({
           history: newHistory,
