@@ -1,54 +1,82 @@
-# AURA - Intelligent Medical Triage
-  
-  **Automated Urgent Response Assistant - AI-Powered Emergency Assistance & Health Assessment**
+# AURA — Intelligent Medical Triage
+
+**Automated Urgent Response Assistant** — AI-powered emergency assistance and health assessment.
+
+AURA is a medical triage application that uses Google's Gemini 2.5 Flash model to assess symptoms described via text, voice, or image and return structured risk-level evaluations with actionable care guidance. It locates nearby medical facilities using geolocation and provides a follow-up chat for additional questions.
+
+Designed for speed in urgent situations, AURA works without requiring an account. Users can perform assessments immediately and optionally sign in to persist their data.
 
 ---
 
-## 🌟 Overview
+## Features
 
-**AURA** is an advanced, AI-driven medical assessment and triage application designed to provide users with rapid, intelligent health insights and immediate emergency guidance. By leveraging Google's Gemini 2.5 Flash model, AURA can process symptom descriptions via text, voice, or image uploads, and immediately determine risk levels, outputting actionable care protocols.
-
-With integrated **geolocation services**, AURA triangulates your exact coordinates to find the nearest and most relevant medical facilities (Hospitals, Urgent Care, Pharmacies) directly in the app.
-
----
-
-## ✨ Key Features
-
-- **🤖 AI Symptom Analysis:** Powered by Google's latest Gemini 2.5 Flash model for high-speed, accurate medical triage using the new `@google/genai` SDK.
-- **📍 Location-Aware:** Automatically detects your location and uses Google Search Grounding to suggest nearby medical facilities.
-- **🎙️ Multi-Modal Input:** Describe your symptoms via text, use the built-in speech-to-text voice recognition, or upload images/photos of visual symptoms.
-- **🚨 Emergency Detection:** Instant, highlighted alerts for life-threatening conditions with a direct "Call Emergency Services" action.
-- **📄 Shareable Reports:** Generate shareable image reports of your triage assessment using the Web Share API.
-- **🔒 Secure & Private:** Features robust backend authentication (JWT) with reliable session persistence (you stay logged in after refresh), and a specialized AI agent step designed to scrub PII (Personally Identifiable Information) before queries are sent to the AI.
-- **🌓 Adaptive Theming:** Full dark/light mode support with dynamic, theme-aware branding and logos.
+- **AI Symptom Analysis** — Structured triage powered by Gemini 2.5 Flash with risk scoring, condition identification, and immediate action recommendations.
+- **Multi-Modal Input** — Text, speech-to-text voice input, or image upload for visual symptoms.
+- **Guest-First Access** — Full triage functionality without sign-in. Guest sessions are stored locally in the browser and can be migrated to a permanent account.
+- **Location-Aware Facilities** — Detects user location and surfaces nearby hospitals, urgent care centers, and pharmacies via Google Search grounding.
+- **Emergency Detection** — Prominent alerts for life-threatening conditions with a direct call-to-action for emergency services.
+- **Follow-Up Chat** — Conversational AI consultant for post-triage questions, with full session context.
+- **Shareable Reports** — Generate and share triage reports via the Web Share API or download as images.
+- **PII Scrubbing** — A preprocessing step removes personally identifiable information before sending data to the AI.
+- **Dark/Light Mode** — Adaptive theming with dynamic logo and UI adjustments.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
-- **React.js (Vite)**
-- **Tailwind CSS** (for styling and glassmorphism UI)
-- **Framer Motion** (for smooth animations and transitions)
-- **Lucide React** (for iconography)
+- React 19 with Vite and TypeScript
+- Tailwind CSS (glassmorphism UI)
+- Framer Motion (animations)
+- Lucide React (icons)
 
 ### Backend
-- **Node.js & Express.js**
-- **MongoDB & Mongoose** (for user profile and session history storage)
-- **JWT & bcrypt** (for secure authentication)
-- **Google GenAI SDK** (for Gemini API interaction)
+- Node.js and Express
+- MongoDB Atlas via Mongoose
+- JWT authentication with bcrypt
+- Google GenAI SDK (`@google/genai`)
+- express-rate-limit (guest rate limiting)
 
 ---
 
-## 🚀 Getting Started
+## Project Structure
 
-Follow these instructions to set up and run the AURA application locally.
+```
+aura/
+├── client/                  # React SPA (Vite)
+│   ├── App.tsx              # Main application (views, state, handlers)
+│   ├── components/
+│   │   └── UIComponents.tsx # Shared UI primitives
+│   ├── lib/
+│   │   └── types.ts         # TypeScript interfaces
+│   ├── index.html           # Entry HTML with Tailwind config
+│   └── vite.config.ts       # Vite config with API proxy
+├── server/                  # Express API
+│   ├── server.js            # Entry point, middleware, route mounting
+│   ├── middleware/
+│   │   └── auth.js          # JWT verification middleware
+│   ├── models/
+│   │   ├── User.js          # User authentication model
+│   │   ├── Profile.js       # Medical profile (allergies, conditions, medications)
+│   │   └── Session.js       # Triage sessions and chat history
+│   └── routes/
+│       ├── auth.js          # Register, login, token validation
+│       ├── gemini.js        # AI triage, chat, places, geocoding
+│       ├── history.js       # Session CRUD
+│       └── profile.js       # Profile CRUD
+├── docker-compose.yml
+└── vercel.json
+```
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v22 or higher recommended)
-- A [MongoDB](https://www.mongodb.com/) cluster (or local instance)
-- A [Google Gemini API Key](https://aistudio.google.com/)
+- [Node.js](https://nodejs.org/) v22 or higher
+- A [MongoDB Atlas](https://www.mongodb.com/atlas) cluster (or local MongoDB instance)
+- A [Google Gemini API key](https://aistudio.google.com/)
 
 ### 1. Clone the Repository
 
@@ -59,14 +87,12 @@ cd AURA
 
 ### 2. Backend Setup
 
-Open a terminal and navigate to the `server` directory:
-
 ```bash
 cd server
 npm install
 ```
 
-Create a `.env` file in the `server` directory with the following variables:
+Create a `.env` file in the `server/` directory:
 
 ```env
 PORT=5000
@@ -75,61 +101,76 @@ JWT_SECRET=your_jwt_secret_key
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
-Start the backend development server:
+Start the backend:
 
 ```bash
 npm run dev
 ```
-*(The backend should now be running on `http://localhost:5000`)*
+
+The server runs on `http://localhost:5000`.
 
 ### 3. Frontend Setup
 
-Open a new terminal window and navigate to the `client` directory:
+In a separate terminal:
 
 ```bash
 cd client
 npm install
-```
-
-Start the frontend development server:
-
-```bash
 npm run dev
 ```
-*(The frontend will start on `http://localhost:3000`. All API requests to `/api/*` are automatically proxied to the backend on port 5000 via Vite proxy configuration.)*
+
+The frontend runs on `http://localhost:3000`. API requests to `/api/*` are proxied to the backend automatically via Vite.
 
 ---
 
-## � Docker
+## Docker
 
-For localized orchestration and ensuring environment parity, AURA is fully containerized.
-
-### Prerequisites
-- [Docker](https://www.docker.com/products/docker-desktop/) installed.
+AURA is fully containerized with multi-stage Dockerfiles for both services.
 
 ### Run with Docker Compose
-1. Ensure your `.env` file is set up in the `server` directory.
-2. From the project root, run:
+
+Ensure the `server/.env` file is configured, then from the project root:
+
 ```bash
 docker-compose up --build
 ```
-The application will be accessible at `http://localhost:3000`.
 
-### Docker Hub Images
-The images are also available on Docker Hub:
-- **Server**: `najiboladosu/aura-server:latest`
-- **Client**: `najiboladosu/aura-client:latest`
+The application will be available at `http://localhost:3000`.
+
+### Docker Hub
+
+Pre-built images are available:
+
+- `najiboladosu/aura-server:latest`
+- `najiboladosu/aura-client:latest`
 
 ---
 
-## ☁️ Vercel Deployment
+## Vercel Deployment
 
-AURA is configured for seamless deployment on Vercel as a monorepo.
+AURA is configured for Vercel monorepo deployment. The client builds as a static site and the server runs as a Node.js serverless function.
 
-1. Install the [Vercel CLI](https://vercel.com/docs/cli).
-2. Login and deploy:
+1. Install the [Vercel CLI](https://vercel.com/docs/cli) and deploy:
+
 ```bash
 vercel
 ```
-3. Follow the CLI prompts to link your project.
-4. Set your environment variables (`MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`) in the Vercel Dashboard.
+
+2. Set environment variables (`MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`) in the Vercel dashboard.
+
+---
+
+## Environment Variables
+
+| Variable | Description |
+|---|---|
+| `PORT` | Server port (default: `5000`) |
+| `MONGO_URI` | MongoDB connection string |
+| `JWT_SECRET` | Secret key for JWT signing |
+| `GEMINI_API_KEY` | Google Gemini API key |
+
+---
+
+## License
+
+This project is proprietary. All rights reserved.
