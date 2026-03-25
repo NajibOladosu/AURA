@@ -93,7 +93,7 @@ const compressImage = (base64Str: string, maxWidth = 1024, quality = 0.7): Promi
 
 const App = () => {
   // Views
-  const [view, setView] = useState<'auth' | 'welcome' | 'input' | 'processing' | 'result' | 'history' | 'profile' | 'settings'>('auth');
+  const [view, setView] = useState<'auth' | 'welcome' | 'input' | 'processing' | 'result' | 'history' | 'profile' | 'settings' | 'migrate'>('auth');
 
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -141,6 +141,12 @@ const App = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatFileRef = useRef<HTMLInputElement>(null);
+
+  // Migration State (guest → authenticated)
+  const [pendingMigration, setPendingMigration] = useState<{ sessions: HistorySession[], profile: UserProfile } | null>(null);
+  const [selectedMigrationIds, setSelectedMigrationIds] = useState<Set<string>>(new Set());
+  const [migrateProfile, setMigrateProfile] = useState(true);
+  const [migrationLoading, setMigrationLoading] = useState(false);
 
   // Agents State
   const [agents, setAgents] = useState<AgentState[]>([
@@ -372,10 +378,22 @@ const App = () => {
         // Save JWT
         localStorage.setItem('aura_token', data.token);
         setCurrentUser(data.user);
-        loadUserData(data.token);
-        setView('welcome');
         setAuthPassword('');
         setAuthError(null);
+
+        // Check for guest data to migrate
+        const guestSessions = loadGuestSessions();
+        const guestProfile = loadGuestProfile();
+        const hasGuestData = guestSessions.length > 0 || guestProfile.allergies.length > 0 || guestProfile.conditions.length > 0 || guestProfile.medications.length > 0;
+
+        if (hasGuestData) {
+          setPendingMigration({ sessions: guestSessions, profile: guestProfile });
+          setSelectedMigrationIds(new Set(guestSessions.map(s => s.id)));
+          setView('migrate');
+        } else {
+          loadUserData(data.token);
+          setView('welcome');
+        }
       } else {
         // Switch to login mode after successful registration
         setAuthMode('login');
@@ -1324,14 +1342,28 @@ const App = () => {
                   <h3 className="font-semibold text-lg">Account Actions</h3>
                 </div>
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Sign out of your account to clear your current session.</p>
-                  <Button
-                    variant="destructive"
-                    className="w-full justify-between"
-                    onClick={logoutUser}
-                  >
-                    <span className="flex items-center gap-2"><LogOut size={16} /> Log Out</span>
-                  </Button>
+                  {currentUser ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">Sign out of your account to clear your current session.</p>
+                      <Button
+                        variant="destructive"
+                        className="w-full justify-between"
+                        onClick={logoutUser}
+                      >
+                        <span className="flex items-center gap-2"><LogOut size={16} /> Log Out</span>
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground">Sign in to save your assessments and sync your profile across devices.</p>
+                      <Button
+                        className="w-full justify-between"
+                        onClick={() => setView('auth')}
+                      >
+                        <span className="flex items-center gap-2"><LogIn size={16} /> Sign In</span>
+                      </Button>
+                    </>
+                  )}
                 </div>
               </BentoCard>
             </motion.div>
@@ -1503,14 +1535,16 @@ const App = () => {
                     <div className="w-20 h-20 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4">
                       <UserIcon size={32} />
                     </div>
-                    <h3 className="text-xl font-semibold">{currentUser.name}</h3>
-                    <p className="text-sm text-muted-foreground">{currentUser.email}</p>
+                    <h3 className="text-xl font-semibold">{currentUser ? currentUser.name : 'Guest User'}</h3>
+                    <p className="text-sm text-muted-foreground">{currentUser ? currentUser.email : 'Not signed in'}</p>
                   </div>
                   <div className="space-y-3 pt-4 border-t border-border/50">
+                    {currentUser && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-2"><Calendar size={14} /> Joined</span>
                       <span className="font-mono">{new Date(currentUser.joinedAt).toLocaleDateString()}</span>
                     </div>
+                    )}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-2"><Hash size={14} /> Sessions</span>
                       <span className="font-mono">{sessions.length}</span>
@@ -1631,7 +1665,7 @@ const App = () => {
                 <div className="flex items-center justify-between mb-4 text-muted-foreground border-b border-border/50 pb-2">
                   <div className="flex items-center gap-3">
                     <UserIcon size={18} />
-                    <span className="text-xs uppercase tracking-wider font-semibold">Medical Profile for {currentUser?.name}</span>
+                    <span className="text-xs uppercase tracking-wider font-semibold">Medical Profile{currentUser ? ` for ${currentUser.name}` : ''}</span>
                   </div>
                   <ArrowRight size={14} className="opacity-50" />
                 </div>
