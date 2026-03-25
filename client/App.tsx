@@ -1092,7 +1092,7 @@ const App = () => {
                 className="w-full h-full object-contain"
               />
             </div>
-            <span className="font-display font-semibold text-lg tracking-tight">AURA</span>
+            <span className="font-logo text-lg">AURA</span>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -1355,8 +1355,8 @@ const App = () => {
                   <span className="block text-2xl md:text-3xl font-normal text-muted-foreground mb-2">
                     {currentUser ? `Hello, ${currentUser.name.split(' ')[0]}.` : 'Hello.'}
                   </span>
-                  Personal Health <br />
-                  <span className="text-muted-foreground opacity-50">Intelligence.</span>
+                  <span className="font-logo">Personal Health <br />
+                  <span className="text-muted-foreground opacity-50">Intelligence.</span></span>
                 </h1>
                 <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto font-light leading-relaxed">
                   Medical-grade triage powered by Gemini 3.0 Pro. <br className="hidden md:block" />
