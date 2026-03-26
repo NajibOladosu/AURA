@@ -1,8 +1,11 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import authMiddleware from '../middleware/auth.js';
 import Session from '../models/Session.js';
 
 const router = express.Router();
+
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 // Get all sessions for a user
 router.get('/', authMiddleware, async (req, res) => {
@@ -17,6 +20,8 @@ router.get('/', authMiddleware, async (req, res) => {
 // Get a specific session
 router.get('/:id', authMiddleware, async (req, res) => {
     try {
+        if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Invalid session ID' });
+
         const session = await Session.findOne({ _id: req.params.id, user: req.user.id });
         if (!session) return res.status(404).json({ error: 'Session not found' });
         res.json(session);
@@ -47,6 +52,8 @@ router.post('/', authMiddleware, async (req, res) => {
 // Update a session (e.g., adding chat messages or places)
 router.put('/:id', authMiddleware, async (req, res) => {
     try {
+        if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Invalid session ID' });
+
         const { chatHistory, nearbyPlaces } = req.body;
 
         const session = await Session.findOne({ _id: req.params.id, user: req.user.id });
@@ -65,6 +72,8 @@ router.put('/:id', authMiddleware, async (req, res) => {
 // Delete a session
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
+        if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Invalid session ID' });
+
         const session = await Session.findOneAndDelete({ _id: req.params.id, user: req.user.id });
         if (!session) return res.status(404).json({ error: 'Session not found' });
 

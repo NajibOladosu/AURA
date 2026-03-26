@@ -409,10 +409,6 @@ const App = () => {
     }
   };
 
-  const loginUser = (user: User) => {
-    setCurrentUser(user);
-    // Don't need to save session here, it's tracked by JWT
-  };
   const logoutUser = () => {
     setCurrentUser(null);
     localStorage.removeItem('aura_token');
@@ -777,7 +773,12 @@ const App = () => {
     setSymptoms('');
     setSelectedImage(null);
     setView('welcome');
-    setAgents(prev => prev.map(a => ({ ...a, status: 'idle', message: 'Waiting...' })));
+    setAgents([
+      { name: 'PII Scrubbing Layer', status: 'idle', message: 'Sanitizing input...' },
+      { name: 'Safety Guidelines', status: 'idle', message: 'Matching safety protocols...' },
+      { name: 'Clinical Reasoning', status: 'idle', message: 'Analyzing data...' },
+      { name: 'Geospatial Grid', status: 'idle', message: 'Location locked.' }
+    ]);
   };
 
   const handleShareReport = async () => {
@@ -969,7 +970,12 @@ const App = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to process triage request");
+        let errorMsg = "Failed to process triage request";
+        try {
+          const errData = await response.json();
+          if (errData.error) errorMsg = errData.error;
+        } catch {}
+        throw new Error(errorMsg);
       }
 
       const triage: TriageResult = await response.json();
@@ -2070,8 +2076,8 @@ const App = () => {
                         <div className="text-4xl font-mono">{result.riskScore}<span className="text-lg opacity-50">/10</span></div>
                       </div>
                       <div>
-                        <div className="text-sm opacity-60 uppercase tracking-wider mb-1">Confidence</div>
-                        <div className="text-4xl font-mono">98<span className="text-lg opacity-50">%</span></div>
+                        <div className="text-sm opacity-60 uppercase tracking-wider mb-1">Severity</div>
+                        <div className="text-4xl font-mono">{result.riskScore * 10}<span className="text-lg opacity-50">%</span></div>
                       </div>
                     </div>
                   </div>
