@@ -65,6 +65,10 @@ router.post('/triage', async (req, res) => {
     try {
         const { symptoms, userProfile, historyContext, base64Image, mimeType } = req.body;
 
+        if (!symptoms || typeof symptoms !== 'string') {
+            return res.status(400).json({ error: 'Symptoms text is required.' });
+        }
+
         if (!process.env.GEMINI_API_KEY) {
             return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
         }
@@ -96,7 +100,7 @@ router.post('/triage', async (req, res) => {
         parts.push({
             text: `
                 You are AURA, an AI medical triage system.
-                
+
                 STEP 1: ANALYZE input symptoms and visual evidence.
                 STEP 2: APPLY the provided 'SAFETY GUIDELINES' to flag critical conditions. You MUST cite these in the output.
                 STEP 3: CROSS-REFERENCE with Patient History.
@@ -104,9 +108,9 @@ router.post('/triage', async (req, res) => {
 
                 [SAFETY GUIDELINES]
                 ${retrievedDocs}
-                
+
                 ${profileText}
-                
+
                 INPUT SYMPTOMS (Sanitized): "${safeSymptoms}"
             `
         });
@@ -127,30 +131,30 @@ router.post('/triage', async (req, res) => {
             throw new Error("No response from AI");
         }
 
-        res.json(JSON.parse(text));
+        try {
+            res.json(JSON.parse(text));
+        } catch (parseError) {
+            console.error("Failed to parse triage response:", text.substring(0, 200));
+            res.status(502).json({ error: 'AI returned an invalid response. Please try again.' });
+        }
 
     } catch (error) {
-        console.error("AI Triage Request Payload:", {
-            symptomsLength: req.body?.symptoms?.length,
-            hasImage: !!req.body?.base64Image,
-            profile: !!req.body?.userProfile
-        });
-        console.error("AI Triage Detailed Error:", {
-            message: error.message,
-            stack: error.stack,
-            response: error.response?.data
-        });
-        res.status(500).json({
-            error: 'Error processing AI request',
-            details: error.message,
-            type: error.name
-        });
+        console.error("AI Triage Error:", error.message);
+        res.status(500).json({ error: 'Error processing AI request' });
     }
 });
 
 router.post('/chat', async (req, res) => {
     try {
         const { history, triageContext, userProfile, newMessage, base64Image } = req.body;
+
+        if (!newMessage || typeof newMessage !== 'string') {
+            return res.status(400).json({ error: 'Message is required.' });
+        }
+
+        if (!triageContext || typeof triageContext !== 'object') {
+            return res.status(400).json({ error: 'Triage context is required.' });
+        }
 
         if (!process.env.GEMINI_API_KEY) {
             return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
@@ -169,24 +173,26 @@ router.post('/chat', async (req, res) => {
         const systemContext = `
             [SYSTEM CONTEXT]
             You are AURA, an AI medical consultant.
-            
+
             TRIAGE REPORT:
-            - Condition: ${triageContext.conditionTitle}
-            - Risk Level: ${triageContext.riskLevel}
-            - Analysis: ${triageContext.medicalAnalysis}
+            - Condition: ${triageContext.conditionTitle || 'Unknown'}
+            - Risk Level: ${triageContext.riskLevel || 'Unknown'}
+            - Analysis: ${triageContext.medicalAnalysis || 'N/A'}
             - Guidelines Cited: ${triageContext.citations?.map(c => c.protocolId).join(', ') || 'None'}
-            
+
             ${profileText}
-            
+
             INSTRUCTIONS:
             - Answer follow-up questions professionally.
             - If the user provides new information that significantly worsens the prognosis, advise them to seek immediate care.
         `;
 
         let promptText = `${systemContext}\n\n[CHAT HISTORY]\n`;
-        history.forEach(msg => {
-            promptText += `${msg.role === 'user' ? 'Patient' : 'AURA'}: ${msg.text}\n`;
-        });
+        if (Array.isArray(history)) {
+            history.forEach(msg => {
+                promptText += `${msg.role === 'user' ? 'Patient' : 'AURA'}: ${msg.text}\n`;
+            });
+        }
 
         promptText += `Patient: ${safeMessage}\n`;
         promptText += `AURA:`;
@@ -212,28 +218,34 @@ router.post('/chat', async (req, res) => {
 
         res.json({ reply: response.text || "I apologize, I couldn't process that request." });
     } catch (error) {
-        console.error("Chat Error:", error);
+        console.error("Chat Error:", error.message);
         res.status(500).json({ error: 'Error processing chat request' });
     }
 });
+
 router.post('/places', async (req, res) => {
     try {
         const { lat, lng, facilityType } = req.body;
+
+        if (lat == null || lng == null || !facilityType) {
+            return res.status(400).json({ error: 'Latitude, longitude, and facility type are required.' });
+        }
+
         if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
 
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `
-                Task: Find the top 3 ${facilityType} locations strictly near Lat: ${lat}, Lng: ${lng}.
-                
+                Task: Find the top 3 ${String(facilityType)} locations strictly near Lat: ${Number(lat)}, Lng: ${Number(lng)}.
+
                 You must search the web to find real medical facilities near these exact coordinates.
-                
+
                 CRITICAL LOCATION RULES:
-                1. Results MUST be strictly within a 50km radius of Lat: ${lat}, Lng: ${lng}.
+                1. Results MUST be strictly within a 50km radius of Lat: ${Number(lat)}, Lng: ${Number(lng)}.
                 2. Do NOT infer a location if you cannot find exact matches.
                 3. Do NOT provide results from other countries or distant cities.
-                
+
                 Output Requirements:
                 - Output ONLY a JSON array.
                 - Structure: [{"name": "Place Name", "rating": "4.5", "address": "Full Address with City/Zip", "googleMapsUri": "https://maps.google.com/..."}]
@@ -244,15 +256,7 @@ router.post('/places', async (req, res) => {
                 - Do NOT use JSON code blocks.
             `,
             config: {
-                tools: [{ googleMaps: {} }],
-                toolConfig: {
-                    retrievalConfig: {
-                        latLng: {
-                            latitude: lat,
-                            longitude: lng
-                        }
-                    }
-                }
+                tools: [{ googleSearch: {} }],
             }
         });
 
@@ -262,7 +266,11 @@ router.post('/places', async (req, res) => {
             placesRaw = JSON.parse(text);
         } catch {
             const match = text.match(/\[[\s\S]*\]/);
-            placesRaw = match ? JSON.parse(match[0]) : [];
+            try {
+                placesRaw = match ? JSON.parse(match[0]) : [];
+            } catch {
+                placesRaw = [];
+            }
         }
 
         const places = placesRaw.map((p) => ({
@@ -274,7 +282,7 @@ router.post('/places', async (req, res) => {
 
         res.json(places);
     } catch (error) {
-        console.error("Maps Error:", error);
+        console.error("Maps Error:", error.message);
         res.status(500).json({ error: 'Error processing places request' });
     }
 });
@@ -282,20 +290,29 @@ router.post('/places', async (req, res) => {
 router.post('/geocode', async (req, res) => {
     try {
         const { locationName } = req.body;
+
+        if (!locationName || typeof locationName !== 'string') {
+            return res.status(400).json({ error: 'Location name is required.' });
+        }
+
         if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
 
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Get the latitude, longitude and standard formatted address for "${locationName}". Return strictly JSON: { "lat": number, "lng": number, "address": "string" }.`,
+            contents: `Get the latitude, longitude and standard formatted address for "${String(locationName)}". Return strictly JSON: { "lat": number, "lng": number, "address": "string" }.`,
             config: {
                 responseMimeType: "application/json"
             }
         });
 
-        res.json(JSON.parse(response.text || "{}"));
+        try {
+            res.json(JSON.parse(response.text || "{}"));
+        } catch {
+            res.status(502).json({ error: 'Failed to parse geocode response' });
+        }
     } catch (e) {
-        console.error("Geocoding failed", e);
+        console.error("Geocoding failed:", e.message);
         res.status(500).json({ error: 'Failed to geocode' });
     }
 });
@@ -303,17 +320,22 @@ router.post('/geocode', async (req, res) => {
 router.post('/reverse-geocode', async (req, res) => {
     try {
         const { lat, lng } = req.body;
+
+        if (lat == null || lng == null) {
+            return res.status(400).json({ error: 'Latitude and longitude are required.' });
+        }
+
         if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
 
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `What is the City, Region (and Country if applicable) for coordinates ${lat}, ${lng}? Return ONLY the location name string (e.g. "San Francisco, CA"). Do not include other text.`
+            contents: `What is the City, Region (and Country if applicable) for coordinates ${Number(lat)}, ${Number(lng)}? Return ONLY the location name string (e.g. "San Francisco, CA"). Do not include other text.`
         });
 
         res.json({ name: response.text?.trim() || "Unknown Location" });
     } catch (e) {
-        console.error("Reverse geocoding failed", e);
+        console.error("Reverse geocoding failed:", e.message);
         res.status(500).json({ error: 'Failed to reverse geocode' });
     }
 });

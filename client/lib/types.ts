@@ -2,8 +2,6 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  passwordHash: string; // SHA-256 Hash
-  salt: string;         // Unique salt per user
   joinedAt: number;
 }
 
