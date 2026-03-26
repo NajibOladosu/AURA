@@ -352,6 +352,7 @@ const App = () => {
 
     setAuthLoading(true);
     setAuthError(null);
+    setAuthSuccess(null);
 
     try {
       const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
@@ -414,11 +415,11 @@ const App = () => {
   };
   const logoutUser = () => {
     setCurrentUser(null);
-    setSessions([]);
-    setUserProfile({ allergies: [], conditions: [], medications: [] });
-    setSessionId(null);
-    setView('auth');
     localStorage.removeItem('aura_token');
+    setSessionId(null);
+    setSessions(loadGuestSessions());
+    setUserProfile(loadGuestProfile());
+    setView('welcome');
     setAuthEmail('');
     setAuthName('');
     setAuthPassword('');
@@ -486,7 +487,11 @@ const App = () => {
   };
 
   const saveGuestProfile = (profile: UserProfile) => {
-    localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile));
+    try {
+      localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(profile));
+    } catch (e) {
+      console.error("Failed to save guest profile:", e);
+    }
   };
 
   const loadGuestSessions = (): HistorySession[] => {
@@ -497,9 +502,13 @@ const App = () => {
   };
 
   const saveGuestSessions = (updatedSessions: HistorySession[]) => {
-    // Cap at 20 most recent to avoid localStorage bloat
-    const capped = updatedSessions.slice(0, 20);
-    localStorage.setItem(GUEST_SESSIONS_KEY, JSON.stringify(capped));
+    try {
+      // Cap at 20 most recent to avoid localStorage bloat
+      const capped = updatedSessions.slice(0, 20);
+      localStorage.setItem(GUEST_SESSIONS_KEY, JSON.stringify(capped));
+    } catch (e) {
+      console.error("Failed to save guest sessions:", e);
+    }
   };
 
   const saveProfileToStorage = async (profile: UserProfile) => {
@@ -560,7 +569,7 @@ const App = () => {
         if (res.ok) {
           const newSession = await res.json();
           const mappedSession = { ...newSession, id: newSession._id };
-          setSessions([mappedSession, ...sessions]);
+          setSessions(prev => [mappedSession, ...prev]);
           setSessionId(mappedSession.id);
           return mappedSession.id;
         }
@@ -579,10 +588,12 @@ const App = () => {
         chatHistory: initialChat,
         nearbyPlaces: places
       };
-      const updatedSessions = [guestSession, ...sessions];
-      setSessions(updatedSessions);
+      setSessions(prev => {
+        const updatedSessions = [guestSession, ...prev];
+        saveGuestSessions(updatedSessions);
+        return updatedSessions;
+      });
       setSessionId(guestId);
-      saveGuestSessions(updatedSessions);
       return guestId;
     }
   };
@@ -591,8 +602,11 @@ const App = () => {
     if (!sessionId) return;
     const token = localStorage.getItem('aura_token');
 
-    const updated = sessions.map(s => s.id === sessionId ? { ...s, chatHistory: newChatHistory } : s);
-    setSessions(updated);
+    setSessions(prev => {
+      const updated = prev.map(s => s.id === sessionId ? { ...s, chatHistory: newChatHistory } : s);
+      if (!token) saveGuestSessions(updated);
+      return updated;
+    });
 
     if (token) {
       try {
@@ -607,16 +621,17 @@ const App = () => {
       } catch (e) {
         console.error("Failed to update session chat", e);
       }
-    } else {
-      saveGuestSessions(updated);
     }
   };
 
   const updateSessionPlaces = async (id: string, places: Place[]) => {
     const token = localStorage.getItem('aura_token');
 
-    const updated = sessions.map(s => s.id === id ? { ...s, nearbyPlaces: places } : s);
-    setSessions(updated);
+    setSessions(prev => {
+      const updated = prev.map(s => s.id === id ? { ...s, nearbyPlaces: places } : s);
+      if (!token) saveGuestSessions(updated);
+      return updated;
+    });
 
     if (token) {
       try {
@@ -631,8 +646,6 @@ const App = () => {
       } catch (e) {
         console.error("Failed to update session places", e);
       }
-    } else {
-      saveGuestSessions(updated);
     }
   };
 
@@ -642,18 +655,25 @@ const App = () => {
     const token = localStorage.getItem('aura_token');
     if (token) {
       try {
-        await fetch(`/api/history/${id}`, {
+        const res = await fetch(`/api/history/${id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        if (!res.ok) {
+          console.error("Server failed to delete session:", res.status);
+          return;
+        }
       } catch (e) {
         console.error("Failed to delete session", e);
+        return;
       }
     }
 
-    const updatedSessions = sessions.filter(s => s.id !== id);
-    setSessions(updatedSessions);
-    if (!token) saveGuestSessions(updatedSessions);
+    setSessions(prev => {
+      const updated = prev.filter(s => s.id !== id);
+      if (!token) saveGuestSessions(updated);
+      return updated;
+    });
 
     if (sessionId === id) {
       handleNewScan();
@@ -663,9 +683,11 @@ const App = () => {
   const handleMigration = async (skip: boolean = false) => {
     const token = localStorage.getItem('aura_token');
     if (!token || !pendingMigration) {
-      loadUserData(token || '');
-      setView('welcome');
       setPendingMigration(null);
+      if (token) {
+        loadUserData(token);
+      }
+      setView('welcome');
       return;
     }
 
@@ -721,6 +743,10 @@ const App = () => {
       setView('welcome');
     } catch (e) {
       console.error("Migration failed:", e);
+      alert("Some data could not be migrated. You can continue using the app — your guest data is still saved locally.");
+      setPendingMigration(null);
+      if (token) loadUserData(token);
+      setView('welcome');
     } finally {
       setMigrationLoading(false);
     }
@@ -1239,6 +1265,7 @@ const App = () => {
                   onClick={() => {
                     setAuthMode(authMode === 'login' ? 'signup' : 'login');
                     setAuthError(null);
+                    setAuthSuccess(null);
                     setAuthPassword('');
                   }}
                   className="text-primary font-medium hover:underline"
@@ -1680,7 +1707,7 @@ const App = () => {
 
           {/* ... (Profile and History views unchanged) ... */}
           {/* --- 6. PROFILE --- */}
-          {view === 'profile' && currentUser && (
+          {view === 'profile' && (
             <motion.div
               key="profile"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -1697,9 +1724,11 @@ const App = () => {
                     <h2 className="text-3xl font-display font-medium">Patient Profile</h2>
                     <p className="text-muted-foreground">Manage your permanent medical record used by AURA.</p>
                   </div>
+                  {currentUser && (
                   <div className="hidden md:block">
                     <Badge variant="neutral">ID: {currentUser.id.slice(0, 8)}</Badge>
                   </div>
+                  )}
                 </div>
               </div>
 
@@ -1717,7 +1746,7 @@ const App = () => {
                     {currentUser && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-2"><Calendar size={14} /> Joined</span>
-                      <span className="font-mono">{new Date(currentUser.joinedAt).toLocaleDateString()}</span>
+                      <span className="font-mono">{new Date(currentUser.joinedAt || Date.now()).toLocaleDateString()}</span>
                     </div>
                     )}
                     <div className="flex items-center justify-between text-sm">
