@@ -104,6 +104,7 @@ const App = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
 
   // App State
   const [symptoms, setSymptoms] = useState('');
@@ -397,7 +398,8 @@ const App = () => {
       } else {
         // Switch to login mode after successful registration
         setAuthMode('login');
-        setAuthError('Registration successful! Please log in.');
+        setAuthError(null);
+        setAuthSuccess('Registration successful! Please log in.');
       }
     } catch (err: any) {
       setAuthError(err.message || 'An error occurred during authentication.');
@@ -1213,6 +1215,15 @@ const App = () => {
                       className="text-xs text-red-500 bg-red-500/10 p-2 rounded-lg border border-red-500/20"
                     >
                       {authError}
+                    </motion.div>
+                  )}
+                  {authSuccess && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="text-xs text-green-500 bg-green-500/10 p-2 rounded-lg border border-green-500/20"
+                    >
+                      {authSuccess}
                     </motion.div>
                   )}
 
