@@ -16,6 +16,7 @@ import {
   CitationRow,
   cn
 } from './components/UIComponents';
+import EmergencyCallPanel from './components/EmergencyCallPanel';
 import {
   Activity,
   Camera,
@@ -2002,26 +2003,13 @@ const App = () => {
                 </motion.div>
               )}
 
-              {/* Emergency Banner */}
-              {result.riskLevel === 'Emergency' && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="bg-red-600 text-white rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-2xl shadow-red-500/30 gap-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-white/20 rounded-full animate-pulse">
-                      <AlertTriangle size={32} />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold uppercase tracking-wide">Emergency Alert</h3>
-                      <p className="opacity-90">Immediate medical attention is recommended.</p>
-                    </div>
-                  </div>
-                  <Button variant="glass" className="bg-white dark:bg-black text-red-600 hover:bg-white/90 dark:hover:bg-black/90 border-transparent font-bold">
-                    <Phone className="mr-2 w-5 h-5" /> CALL EMERGENCY SERVICES
-                  </Button>
-                </motion.div>
+              {/* Emergency Call Panel */}
+              {result.riskScore >= 8 && (
+                <EmergencyCallPanel
+                  riskLevel={result.riskLevel}
+                  riskScore={result.riskScore}
+                  existingLocation={location}
+                />
               )}
 
               <div className="flex justify-between items-end">
