@@ -25,3 +25,4 @@ dist-ssr
 server/.env
 .vercel
 CLAUDE.md
+UPCOMING_FEATURES.md
