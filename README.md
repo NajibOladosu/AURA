@@ -2,7 +2,7 @@
 
 **Automated Urgent Response Assistant** — AI-powered emergency assistance and health assessment.
 
-AURA is a medical triage application that uses Google's Gemini 2.5 Flash model to assess symptoms described via text, voice, or image and return structured risk-level evaluations with actionable care guidance. It locates nearby medical facilities using geolocation and provides a follow-up chat for additional questions.
+AURA is a medical triage application that uses Google's latest Gemini Flash models (including Gemini 3 Flash Preview and Gemini 2.5 Flash) to assess symptoms described via text, voice, or image and return structured risk-level evaluations with actionable care guidance. It locates nearby medical facilities using geolocation and provides a follow-up chat for additional questions.
 
 Designed for speed in urgent situations, AURA works without requiring an account. Users can perform assessments immediately and optionally sign in to persist their data.
 
@@ -10,7 +10,7 @@ Designed for speed in urgent situations, AURA works without requiring an account
 
 ## Features
 
-- **AI Symptom Analysis** — Structured triage powered by Gemini 2.5 Flash with risk scoring, condition identification, and immediate action recommendations.
+- **AI Symptom Analysis** — Structured triage powered by the fastest Gemini Flash models with risk scoring, condition identification, and immediate action recommendations.
 - **Multi-Modal Input** — Text, speech-to-text voice input, or image upload for visual symptoms.
 - **Guest-First Access** — Full triage functionality without sign-in. Guest sessions are stored locally in the browser and can be migrated to a permanent account.
 - **Location-Aware Facilities** — Detects user location and surfaces nearby hospitals, urgent care centers, and pharmacies via Google Search grounding.
