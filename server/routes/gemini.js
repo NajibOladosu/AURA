@@ -3,6 +3,31 @@ import { GoogleGenAI } from '@google/genai';
 
 const router = express.Router();
 
+const FALLBACK_MODELS = [
+    'gemini-3.1-pro',
+    'gemini-3.1-flash',
+    'gemini-2.5-pro',
+    'gemini-2.5-flash'
+];
+
+async function generateContentWithFallback(ai, params) {
+    let lastError;
+    for (const model of FALLBACK_MODELS) {
+        try {
+            console.log(`[AURA AI] Attempting generation with model: ${model}`);
+            const response = await ai.models.generateContent({
+                ...params,
+                model: model,
+            });
+            return response;
+        } catch (error) {
+            console.error(`[AURA AI] Model ${model} failed:`, error.message);
+            lastError = error;
+        }
+    }
+    throw lastError || new Error("All fallback models failed.");
+}
+
 function scrubPII(text) {
     return text.replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, "[PHONE REDACTED]")
         .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, "[EMAIL REDACTED]")
@@ -115,8 +140,7 @@ router.post('/triage', async (req, res) => {
             `
         });
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+        const response = await generateContentWithFallback(ai, {
             contents: parts,
             config: {
                 responseMimeType: "application/json",
@@ -208,8 +232,7 @@ router.post('/chat', async (req, res) => {
         }
         parts.push({ text: promptText });
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+        const response = await generateContentWithFallback(ai, {
             contents: parts,
             config: {
                 systemInstruction: "You are a helpful, calm, and professional medical consultant."
@@ -234,8 +257,7 @@ router.post('/places', async (req, res) => {
         if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
 
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+        const response = await generateContentWithFallback(ai, {
             contents: `
                 Task: Find the top 3 ${String(facilityType)} locations strictly near Lat: ${Number(lat)}, Lng: ${Number(lng)}.
 
@@ -298,8 +320,7 @@ router.post('/geocode', async (req, res) => {
         if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
 
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+        const response = await generateContentWithFallback(ai, {
             contents: `Get the latitude, longitude and standard formatted address for "${String(locationName)}". Return strictly JSON: { "lat": number, "lng": number, "address": "string" }.`,
             config: {
                 responseMimeType: "application/json"
@@ -328,8 +349,7 @@ router.post('/reverse-geocode', async (req, res) => {
         if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
 
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+        const response = await generateContentWithFallback(ai, {
             contents: `What is the City, Region (and Country if applicable) for coordinates ${Number(lat)}, ${Number(lng)}? Return ONLY the location name string (e.g. "San Francisco, CA"). Do not include other text.`
         });
 

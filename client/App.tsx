@@ -1402,7 +1402,7 @@ const App = () => {
                   <span className="text-muted-foreground opacity-50">Intelligence.</span></span>
                 </h1>
                 <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto font-light leading-relaxed">
-                  Medical-grade triage powered by Gemini 3.0 Pro. <br className="hidden md:block" />
+                  Medical-grade triage powered by Gemini 3.1. <br className="hidden md:block" />
                   I have access to your history for smarter diagnostics.
                 </p>
               </div>
