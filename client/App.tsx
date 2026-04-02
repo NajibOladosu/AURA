@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas';
-import { TriageResult, AgentState, Place, ChatMessage, HistorySession, UserProfile, User } from './lib/types';
+import { TriageResult, AgentState, Place, ChatMessage, HistorySession, UserProfile, User, AdminStats } from './lib/types';
+import { trackEvent } from './lib/analytics';
 import {
   Button,
   BentoCard,
@@ -147,6 +148,9 @@ const App = () => {
   const [selectedMigrationIds, setSelectedMigrationIds] = useState<Set<string>>(new Set());
   const [migrateProfile, setMigrateProfile] = useState(true);
   const [migrationLoading, setMigrationLoading] = useState(false);
+  const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
+  const [adminStatsLoading, setAdminStatsLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Agents State
   const [agents, setAgents] = useState<AgentState[]>([
@@ -191,6 +195,7 @@ const App = () => {
       setSessions(loadGuestSessions());
     }
     setView('welcome'); // Always start on welcome — no auth gate
+    trackEvent('page_view', !!localStorage.getItem('aura_token'));
 
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
@@ -220,6 +225,9 @@ const App = () => {
 
   // Refetch data when entering dynamic views to ensure UI matches database
   useEffect(() => {
+    if (view === 'settings' && currentUser) {
+      loadAdminStats();
+    }
     if (view === 'history' || view === 'profile' || view === 'welcome') {
       const token = localStorage.getItem('aura_token');
       if (token) {
@@ -388,6 +396,7 @@ const App = () => {
         const hasGuestData = guestSessions.length > 0 || guestProfile.allergies.length > 0 || guestProfile.conditions.length > 0 || guestProfile.medications.length > 0;
 
         if (hasGuestData) {
+          trackEvent('guest_converted', true);
           setPendingMigration({ sessions: guestSessions, profile: guestProfile });
           setSelectedMigrationIds(new Set(guestSessions.map(s => s.id)));
           setView('migrate');
@@ -400,11 +409,33 @@ const App = () => {
         setAuthMode('login');
         setAuthError(null);
         setAuthSuccess('Registration successful! Please log in.');
+        trackEvent('account_registered', false);
       }
     } catch (err: any) {
       setAuthError(err.message || 'An error occurred during authentication.');
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  const loadAdminStats = async () => {
+    const token = localStorage.getItem('aura_token');
+    if (!token) return;
+    setAdminStatsLoading(true);
+    try {
+      const res = await fetch('/api/analytics/stats', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setAdminStats(await res.json());
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setAdminStatsLoading(false);
     }
   };
 
@@ -979,6 +1010,7 @@ const App = () => {
 
       const triage: TriageResult = await response.json();
       setResult(triage);
+      trackEvent('triage_completed', !!localStorage.getItem('aura_token'));
 
       if (triage.detectedProfileUpdates) {
         // ... (Existing logic for updates)
@@ -1573,6 +1605,91 @@ const App = () => {
                   )}
                 </div>
               </BentoCard>
+
+              {/* Admin Analytics Panel — only visible to the admin account */}
+              {isAdmin && (
+                <BentoCard className="mt-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2 text-primary">
+                      <TrendingUp size={20} />
+                      <h3 className="font-semibold text-lg">Platform Analytics</h3>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={loadAdminStats}
+                      disabled={adminStatsLoading}
+                      className="text-muted-foreground"
+                    >
+                      {adminStatsLoading ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                    </Button>
+                  </div>
+
+                  {adminStats && (
+                    <div className="space-y-5">
+                      {/* Overview */}
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { label: 'Total Visitors', value: adminStats.overview.totalUniqueVisitors },
+                          { label: 'Active Today', value: adminStats.overview.dau },
+                          { label: 'Active This Week', value: adminStats.overview.wau },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="bg-secondary/30 rounded-xl p-3 text-center">
+                            <div className="text-2xl font-mono font-bold">{value}</div>
+                            <div className="text-xs text-muted-foreground mt-1">{label}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Triages */}
+                      <div className="border-t border-border/30 pt-4">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Triages</div>
+                        <div className="grid grid-cols-3 gap-2 text-sm">
+                          <div className="flex flex-col items-center gap-1"><span className="font-mono font-bold text-lg">{adminStats.triages.guest}</span><span className="text-xs text-muted-foreground">Guest</span></div>
+                          <div className="flex flex-col items-center gap-1"><span className="font-mono font-bold text-lg">{adminStats.triages.authenticated}</span><span className="text-xs text-muted-foreground">Signed In</span></div>
+                          <div className="flex flex-col items-center gap-1"><span className="font-mono font-bold text-lg text-primary">{adminStats.triages.total}</span><span className="text-xs text-muted-foreground">Total</span></div>
+                        </div>
+                      </div>
+
+                      {/* Conversion */}
+                      <div className="border-t border-border/30 pt-4">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Guest → Account Conversion</div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-4xl font-mono font-bold text-primary">{adminStats.conversion.ratePercent}%</div>
+                          <div className="text-xs text-muted-foreground leading-relaxed">
+                            {adminStats.conversion.converted} of {adminStats.conversion.guestTriageVisitors} guest triagers registered
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Registrations */}
+                      <div className="border-t border-border/30 pt-4">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Total Registered Accounts</div>
+                        <div className="text-2xl font-mono font-bold">{adminStats.registrations.total}</div>
+                      </div>
+
+                      {/* 7-day triage breakdown */}
+                      {adminStats.timeSeries.triages7d.length > 0 && (
+                        <div className="border-t border-border/30 pt-4">
+                          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Last 7 Days — Triages</div>
+                          <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${adminStats.timeSeries.triages7d.length}, 1fr)` }}>
+                            {adminStats.timeSeries.triages7d.map((d) => (
+                              <div key={d._id} className="text-center">
+                                <div className="text-sm font-mono font-bold">{d.count}</div>
+                                <div className="text-[9px] text-muted-foreground">{d._id.slice(5)}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="text-[10px] text-muted-foreground text-right font-mono pt-2 border-t border-border/30">
+                        Updated {new Date(adminStats.generatedAt).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  )}
+                </BentoCard>
+              )}
             </motion.div>
           )}
 
