@@ -57,6 +57,18 @@ export interface Place {
   websiteUri?: string;
 }
 
+export interface AdminStats {
+  generatedAt: string;
+  overview: { totalUniqueVisitors: number; dau: number; wau: number };
+  triages: { guest: number; authenticated: number; total: number };
+  registrations: { total: number };
+  conversion: { guestTriageVisitors: number; converted: number; ratePercent: string };
+  timeSeries: {
+    triages7d: Array<{ _id: string; count: number; guestCount: number; authCount: number }>;
+    registrations7d: Array<{ _id: string; count: number }>;
+  };
+}
+
 export interface HistorySession {
   id: string;
   userId: string; // Linked to specific user
