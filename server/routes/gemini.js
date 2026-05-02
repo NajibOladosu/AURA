@@ -58,7 +58,8 @@ const TRIAGE_SCHEMA = {
         medicalAnalysis: { type: "string", description: "Clinical reasoning and physiological analysis behind the symptom." },
         immediateActions: { type: "array", items: { type: "string" }, description: "Step-by-step immediate actions the patient should take." },
         suggestedFacilities: { type: "array", items: { type: "string" }, description: "Types of medical facilities suitable for this condition." },
-        suggestedFollowUpQuestions: { type: "array", items: { type: "string" }, description: "Suggested questions the patient should ask their doctor or this AI." },
+        clarifyingQuestions: { type: "array", items: { type: "string" }, description: "3-5 specific questions AURA should ask the patient to gather missing information that would meaningfully refine THIS assessment (e.g. 'How long have you had the pain?', 'On a scale of 1-10, how severe is it?'). These are AURA's questions TO the patient, not the patient's questions." },
+        suggestedFollowUpQuestions: { type: "array", items: { type: "string" }, description: "3-5 questions the PATIENT might want to ask AURA to better understand their condition, prognosis, or next steps (e.g. 'What complications should I watch for?', 'When should I go to the ER?', 'How long will recovery take?'). Phrased from the patient's perspective addressing AURA." },
         citations: {
             type: "array",
             items: {
@@ -129,6 +130,8 @@ router.post('/triage', async (req, res) => {
                 STEP 2: APPLY the provided 'SAFETY GUIDELINES' to flag critical conditions. You MUST cite these in the output.
                 STEP 3: CROSS-REFERENCE with Patient History.
                 STEP 4: DETERMINE Urgency.
+                STEP 5: GENERATE 'clarifyingQuestions' — questions YOU (AURA) need answered to refine the assessment. Address the patient directly (e.g. "How long have you had the pain?"). Focus on missing details that would change risk level, narrow differential diagnosis, or improve action plan.
+                STEP 6: GENERATE 'suggestedFollowUpQuestions' — questions the PATIENT might ask YOU about their condition (e.g. "What complications should I watch for?"). Phrased from the patient's perspective. NEVER duplicate clarifyingQuestions here.
 
                 [SAFETY GUIDELINES]
                 ${retrievedDocs}
@@ -164,6 +167,95 @@ router.post('/triage', async (req, res) => {
     } catch (error) {
         console.error("AI Triage Error:", error.message);
         res.status(500).json({ error: 'Error processing AI request' });
+    }
+});
+
+router.post('/refine', async (req, res) => {
+    try {
+        const { originalSymptoms, previousResult, clarifyingAnswers, userProfile, base64Image, mimeType } = req.body;
+
+        if (!previousResult || typeof previousResult !== 'object') {
+            return res.status(400).json({ error: 'Previous triage result is required.' });
+        }
+        if (!Array.isArray(clarifyingAnswers) || clarifyingAnswers.length === 0) {
+            return res.status(400).json({ error: 'Clarifying answers are required.' });
+        }
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+        }
+
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const safeSymptoms = scrubPII(String(originalSymptoms || ''));
+        const retrievedDocs = retrieveGuidelines(safeSymptoms);
+
+        const qaText = clarifyingAnswers
+            .filter(qa => qa && qa.question && qa.answer && String(qa.answer).trim())
+            .map((qa, i) => `Q${i + 1}: ${qa.question}\nA${i + 1}: ${scrubPII(String(qa.answer))}`)
+            .join('\n\n');
+
+        if (!qaText) {
+            return res.status(400).json({ error: 'At least one answered clarifying question is required.' });
+        }
+
+        const profileText = `
+            KNOWN PATIENT HISTORY (Permanent Record):
+            - Allergies: ${userProfile?.allergies?.length > 0 ? userProfile.allergies.join(', ') : 'None known'}
+            - Chronic Conditions: ${userProfile?.conditions?.length > 0 ? userProfile.conditions.join(', ') : 'None known'}
+            - Current Medications: ${userProfile?.medications?.length > 0 ? userProfile.medications.join(', ') : 'None known'}
+        `;
+
+        const parts = [];
+        if (base64Image) {
+            parts.push({ inlineData: { data: base64Image, mimeType: mimeType || 'image/jpeg' } });
+        }
+
+        parts.push({
+            text: `
+                You are AURA, an AI medical triage system performing a REFINED assessment.
+
+                The patient previously submitted symptoms and you produced an initial triage. The patient has now answered your clarifying questions. Produce an UPDATED full triage assessment incorporating this new information. Use the same output schema as the initial triage.
+
+                Reassess risk level/score honestly — increase if new info reveals red flags, decrease if it rules them out. Generate fresh clarifyingQuestions ONLY if further info is still needed (otherwise return an empty array). Always regenerate suggestedFollowUpQuestions appropriate to the refined picture.
+
+                [SAFETY GUIDELINES]
+                ${retrievedDocs}
+
+                ${profileText}
+
+                ORIGINAL SYMPTOMS (Sanitized): "${safeSymptoms}"
+
+                PREVIOUS ASSESSMENT:
+                - Condition: ${previousResult.conditionTitle || 'Unknown'}
+                - Risk Level: ${previousResult.riskLevel || 'Unknown'}
+                - Risk Score: ${previousResult.riskScore || 'N/A'}
+                - Analysis: ${previousResult.medicalAnalysis || 'N/A'}
+
+                PATIENT'S ANSWERS TO CLARIFYING QUESTIONS:
+                ${qaText}
+            `
+        });
+
+        const response = await generateContentWithFallback(ai, {
+            contents: parts,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: TRIAGE_SCHEMA,
+                systemInstruction: "You are a safe, helpful, and professional medical triage AI. Always prioritize patient safety. If guidelines are provided, use them."
+            }
+        });
+
+        const text = response.text;
+        if (!text) throw new Error("No response from AI");
+
+        try {
+            res.json(JSON.parse(text));
+        } catch (parseError) {
+            console.error("Failed to parse refine response:", text.substring(0, 200));
+            res.status(502).json({ error: 'AI returned an invalid response. Please try again.' });
+        }
+    } catch (error) {
+        console.error("AI Refine Error:", error.message);
+        res.status(500).json({ error: 'Error processing refine request' });
     }
 });
 

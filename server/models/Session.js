@@ -10,6 +10,7 @@ const triageResultSchema = new mongoose.Schema({
     immediateActions: [{ type: String }],
     suggestedFacilities: [{ type: String }],
     suggestedFollowUpQuestions: [{ type: String }],
+    clarifyingQuestions: [{ type: String }],
     disclaimer: { type: String, required: true },
     citations: [{
         source: String,

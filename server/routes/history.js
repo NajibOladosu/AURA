@@ -54,13 +54,14 @@ router.put('/:id', authMiddleware, async (req, res) => {
     try {
         if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Invalid session ID' });
 
-        const { chatHistory, nearbyPlaces } = req.body;
+        const { chatHistory, nearbyPlaces, result } = req.body;
 
         const session = await Session.findOne({ _id: req.params.id, user: req.user.id });
         if (!session) return res.status(404).json({ error: 'Session not found' });
 
         if (chatHistory) session.chatHistory = chatHistory;
         if (nearbyPlaces) session.nearbyPlaces = nearbyPlaces;
+        if (result) session.result = result;
 
         await session.save();
         res.json(session);

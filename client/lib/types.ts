@@ -26,6 +26,7 @@ export interface TriageResult {
   immediateActions: string[];
   suggestedFacilities: string[];
   suggestedFollowUpQuestions: string[];
+  clarifyingQuestions?: string[];
   disclaimer: string;
   citations: Citation[];
   detectedProfileUpdates?: {

@@ -143,6 +143,12 @@ const App = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatFileRef = useRef<HTMLInputElement>(null);
 
+  // Refine State
+  const [lastSubmittedSymptoms, setLastSubmittedSymptoms] = useState<string>('');
+  const [clarifyingAnswers, setClarifyingAnswers] = useState<Record<number, string>>({});
+  const [isRefining, setIsRefining] = useState(false);
+  const [refinedOnce, setRefinedOnce] = useState(false);
+
   // Migration State (guest → authenticated)
   const [pendingMigration, setPendingMigration] = useState<{ sessions: HistorySession[], profile: UserProfile } | null>(null);
   const [selectedMigrationIds, setSelectedMigrationIds] = useState<Set<string>>(new Set());
@@ -650,6 +656,98 @@ const App = () => {
     }
   };
 
+  const updateSessionResult = async (newResult: TriageResult) => {
+    if (!sessionId) return;
+    const token = localStorage.getItem('aura_token');
+
+    setSessions(prev => {
+      const updated = prev.map(s => s.id === sessionId ? { ...s, result: newResult } : s);
+      if (!token) saveGuestSessions(updated);
+      return updated;
+    });
+
+    if (token) {
+      try {
+        await fetch(`/api/history/${sessionId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ result: newResult })
+        });
+      } catch (e) {
+        console.error("Failed to update session result", e);
+      }
+    }
+  };
+
+  const handleRefineSubmit = async () => {
+    if (!result) return;
+    const answered = (Object.entries(clarifyingAnswers) as [string, string][])
+      .filter(([, v]) => v && v.trim())
+      .map(([k, v]) => ({ question: result.clarifyingQuestions?.[Number(k)] || '', answer: v.trim() }))
+      .filter(qa => qa.question);
+
+    if (answered.length === 0) return;
+    setIsRefining(true);
+    try {
+      const token = localStorage.getItem('aura_token');
+      const response = await fetch('/api/ai/refine', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify({
+          originalSymptoms: lastSubmittedSymptoms,
+          previousResult: result,
+          clarifyingAnswers: answered,
+          userProfile
+        })
+      });
+
+      if (!response.ok) {
+        let errMsg = 'Failed to refine assessment';
+        try { const errData = await response.json(); if (errData.error) errMsg = errData.error; } catch {}
+        throw new Error(errMsg);
+      }
+
+      const refined: TriageResult = await response.json();
+      setResult(refined);
+      updateSessionResult(refined);
+
+      if (refined.detectedProfileUpdates) {
+        const updates = refined.detectedProfileUpdates;
+        const newProfile: UserProfile = {
+          allergies: [...new Set([...userProfile.allergies, ...(updates.newAllergies || [])])],
+          conditions: [...new Set([...userProfile.conditions, ...(updates.newConditions || [])])],
+          medications: [...new Set([...userProfile.medications, ...(updates.newMedications || [])])]
+        };
+        if (updates.newAllergies?.length > 0 || updates.newConditions?.length > 0 || updates.newMedications?.length > 0) {
+          saveProfileToStorage(newProfile);
+        }
+      }
+
+      const refinedNote: ChatMessage = {
+        role: 'model',
+        text: `I've updated your assessment based on the additional details you provided. The refined risk level is **${refined.riskLevel}** (score ${refined.riskScore}/10). Let me know if you have more questions.`,
+        timestamp: Date.now()
+      };
+      const newChat = [...chatHistory, refinedNote];
+      setChatHistory(newChat);
+      updateSessionChat(newChat);
+
+      setClarifyingAnswers({});
+      setRefinedOnce(true);
+    } catch (e) {
+      console.error('Refine error', e);
+      alert('Could not refine the assessment. Please try again.');
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
   const updateSessionPlaces = async (id: string, places: Place[]) => {
     const token = localStorage.getItem('aura_token');
 
@@ -792,6 +890,9 @@ const App = () => {
     setChatHistory(session.chatHistory);
     setNearbyPlaces(session.nearbyPlaces || []);
     setSessionId(session.id);
+    setClarifyingAnswers({});
+    setRefinedOnce(false);
+    setLastSubmittedSymptoms('');
     setView('result');
   };
 
@@ -974,6 +1075,9 @@ const App = () => {
     setView('processing');
     setChatHistory([]);
     setSessionId(null);
+    setLastSubmittedSymptoms(symptoms);
+    setClarifyingAnswers({});
+    setRefinedOnce(false);
     simulateAgents();
 
     try {
@@ -2251,6 +2355,70 @@ const App = () => {
                   </BentoCard>
                 )}
 
+                {/* 4.75 Refine Assessment — AURA's questions to user */}
+                {result.clarifyingQuestions && result.clarifyingQuestions.length > 0 && (
+                  <BentoCard className="md:col-span-3 bg-gradient-to-br from-primary/5 to-background border-primary/20">
+                    <div className="flex items-center justify-between mb-4 pb-4 border-b border-border/40">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                          <ScanLine size={20} />
+                        </div>
+                        <div>
+                          <h3 className="font-display font-medium text-lg">Refine Your Assessment</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {refinedOnce
+                              ? "Assessment refined. Answer more if anything changes."
+                              : "AURA needs a few more details to give you a more precise assessment."}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="neutral">{result.clarifyingQuestions.length} QUESTIONS</Badge>
+                    </div>
+
+                    <div className="space-y-4">
+                      {result.clarifyingQuestions.map((q, i) => (
+                        <div key={i} className="space-y-2">
+                          <label className="text-sm font-medium text-foreground flex items-start gap-2">
+                            <span className="text-primary text-xs mt-1">{String(i + 1).padStart(2, '0')}</span>
+                            <span>{q}</span>
+                          </label>
+                          <textarea
+                            value={clarifyingAnswers[i] || ''}
+                            onChange={(e) => setClarifyingAnswers(prev => ({ ...prev, [i]: e.target.value }))}
+                            placeholder="Your answer (optional)..."
+                            className="w-full bg-secondary/30 border border-border/50 rounded-xl p-3 text-sm resize-none focus:ring-1 focus:ring-ring focus:outline-none"
+                            rows={2}
+                            disabled={isRefining}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-5 flex items-center justify-end gap-3">
+                      <p className="text-xs text-muted-foreground mr-auto">
+                        Answer at least one question to refine.
+                      </p>
+                      <Button
+                        onClick={handleRefineSubmit}
+                        disabled={isRefining || Object.values(clarifyingAnswers).every(v => !v || !v.trim())}
+                        className="rounded-xl"
+                      >
+                        {isRefining ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin mr-2" />
+                            Refining...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} className="mr-2" />
+                            Refine Assessment
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </BentoCard>
+                )}
+
                 {/* 5. AURA Consultant Chat (Full Width) */}
                 <BentoCard className="md:col-span-3 min-h-[500px] flex flex-col bg-gradient-to-br from-card to-background">
                   <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/40">
@@ -2260,7 +2428,7 @@ const App = () => {
                       </div>
                       <div>
                         <h3 className="font-display font-medium text-lg">AURA Consultant</h3>
-                        <p className="text-xs text-muted-foreground">Ask clarifying questions or provide more details</p>
+                        <p className="text-xs text-muted-foreground">Ask AURA about your condition, prognosis, or next steps</p>
                       </div>
                     </div>
                     <Badge variant="neutral">LIVE SESSION</Badge>
