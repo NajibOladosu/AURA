@@ -16,27 +16,17 @@ interface EmergencyCallPanelProps {
 }
 
 function getPanelStyle(riskLevel: string) {
-  if (riskLevel === 'Emergency') {
-    return {
-      bg: 'bg-gradient-to-br from-red-600 to-red-800',
-      shadow: 'shadow-2xl shadow-red-500/30',
-      accent: 'bg-white/20 hover:bg-white/30',
-      ambulanceBg: 'bg-white text-red-700 hover:bg-white/90',
-    };
-  }
   if (riskLevel === 'Urgent') {
     return {
-      bg: 'bg-gradient-to-br from-orange-600 to-amber-800',
-      shadow: 'shadow-2xl shadow-orange-500/30',
-      accent: 'bg-white/20 hover:bg-white/30',
-      ambulanceBg: 'bg-white text-orange-700 hover:bg-white/90',
+      bg: 'bg-[#C2410C]',
+      accent: 'bg-white/15 hover:bg-white/25',
+      ambulanceBg: 'bg-white text-[#C2410C] hover:bg-white/90',
     };
   }
   return {
-    bg: 'bg-gradient-to-br from-blue-600 to-indigo-800',
-    shadow: 'shadow-2xl shadow-blue-500/30',
-    accent: 'bg-white/20 hover:bg-white/30',
-    ambulanceBg: 'bg-white text-blue-700 hover:bg-white/90',
+    bg: 'bg-[#D92D20]',
+    accent: 'bg-white/15 hover:bg-white/25',
+    ambulanceBg: 'bg-white text-[#D92D20] hover:bg-white/90',
   };
 }
 
@@ -129,19 +119,17 @@ export default function EmergencyCallPanel({ riskLevel, existingLocation }: Emer
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95, y: -8 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className={`${style.bg} ${style.shadow} text-white rounded-2xl p-6 space-y-5`}
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      className={`${style.bg} text-white p-6 space-y-5 rounded-2xl shadow-soft-lg`}
     >
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <div className="p-3 bg-white/20 rounded-full animate-pulse flex-shrink-0">
-          <AlertTriangle size={28} />
-        </div>
+      <div className="flex items-center gap-3 border-b border-white/20 pb-4">
+        <AlertTriangle size={20} className="shrink-0" />
         <div>
-          <h3 className="text-xl font-bold uppercase tracking-wide">Emergency Alert</h3>
-          <p className="opacity-80 text-sm">Immediate medical attention is required.</p>
+          <div className="font-mono uppercase tracking-[0.12em] text-[0.6875rem] font-medium opacity-80">Priority alert</div>
+          <h3 className="text-lg font-semibold leading-tight">This may be an emergency — seek care now</h3>
         </div>
       </div>
 
@@ -156,7 +144,7 @@ export default function EmergencyCallPanel({ riskLevel, existingLocation }: Emer
           {/* Primary — Ambulance */}
           <a
             href={`tel:${numbers.ambulance}`}
-            className={`flex items-center justify-center gap-3 w-full py-4 rounded-xl font-bold text-lg transition-colors ${style.ambulanceBg}`}
+            className={`flex items-center justify-center gap-3 w-full py-4 font-bold text-lg rounded-full transition-colors ${style.ambulanceBg}`}
           >
             <Phone size={22} />
             Call Ambulance ({numbers.ambulance})
@@ -166,14 +154,14 @@ export default function EmergencyCallPanel({ riskLevel, existingLocation }: Emer
           <div className="grid grid-cols-2 gap-3">
             <a
               href={`tel:${numbers.police}`}
-              className={`flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-colors ${style.accent} text-white`}
+              className={`flex items-center justify-center gap-2 py-3 font-bold text-sm rounded-full transition-colors ${style.accent} text-white`}
             >
               <Phone size={16} />
               Police ({numbers.police})
             </a>
             <a
               href={`tel:${numbers.fire}`}
-              className={`flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-colors ${style.accent} text-white`}
+              className={`flex items-center justify-center gap-2 py-3 font-bold text-sm rounded-full transition-colors ${style.accent} text-white`}
             >
               <Phone size={16} />
               Fire ({numbers.fire})
@@ -187,13 +175,13 @@ export default function EmergencyCallPanel({ riskLevel, existingLocation }: Emer
       ) : null}
 
       {/* Location indicator + change link */}
-      <div className="flex items-center justify-between pt-1 border-t border-white/10">
-        <div className="flex items-center gap-1.5 text-xs opacity-60">
+      <div className="flex items-center justify-between pt-1 border-t border-white/15">
+        <div className="flex items-center gap-1.5 text-xs opacity-60 font-mono">
           <MapPin size={12} />
           <span>
             {detectedCountry
-              ? `Numbers for ${COUNTRY_LIST.find(c => c.code === detectedCountry)?.name ?? detectedCountry}`
-              : 'International fallback (112)'}
+              ? `${COUNTRY_LIST.find(c => c.code === detectedCountry)?.name ?? detectedCountry}`
+              : 'International (112)'}
           </span>
         </div>
         <button
@@ -215,14 +203,14 @@ export default function EmergencyCallPanel({ riskLevel, existingLocation }: Emer
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="bg-black/30 rounded-xl p-3 space-y-2">
+            <div className="bg-black/30 p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   placeholder="Search country…"
                   value={countrySearch}
                   onChange={e => setCountrySearch(e.target.value)}
-                  className="flex-1 bg-white/10 text-white placeholder-white/40 text-sm rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-white/30"
+                  className="flex-1 bg-white/10 text-white placeholder-white/40 text-sm px-3 py-2 outline-none focus:ring-1 focus:ring-white/30"
                   autoFocus
                 />
                 {countrySearch && (
@@ -236,7 +224,7 @@ export default function EmergencyCallPanel({ riskLevel, existingLocation }: Emer
                   <button
                     key={c.code}
                     onClick={() => handleManualCountrySelect(c.code)}
-                    className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors hover:bg-white/20 ${
+                    className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-white/20 ${
                       detectedCountry === c.code ? 'bg-white/20 font-semibold' : ''
                     }`}
                   >

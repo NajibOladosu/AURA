@@ -1,8 +1,8 @@
 import React from 'react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { motion, HTMLMotionProps } from 'framer-motion';
-import { Moon, Sun, Star, ExternalLink, Loader2, ArrowRight, User, Sparkles, TrendingUp, AlertTriangle, Share2, Clipboard, BookOpen } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Moon, Sun, Star, ArrowUpRight, Loader2 } from 'lucide-react';
 import { Place, ChatMessage, Citation } from '../lib/types';
 
 // --- Utils ---
@@ -10,291 +10,330 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// --- Components ---
+// --- Magnetic hover (soft app signature interaction) ---
+// Attach to onMouseMove/onMouseLeave of a button to give it a subtle pull.
+export const magnetMove = (e: React.MouseEvent<HTMLElement>) => {
+  const t = e.currentTarget;
+  const r = t.getBoundingClientRect();
+  const x = (e.clientX - r.left - r.width / 2) * 0.15;
+  const y = (e.clientY - r.top - r.height / 2) * 0.15;
+  t.style.transition = 'transform 0.08s linear, background-color 0.25s, color 0.25s';
+  t.style.transform = `translate(${x}px, ${y}px)`;
+};
+export const magnetLeave = (e: React.MouseEvent<HTMLElement>) => {
+  const t = e.currentTarget;
+  t.style.transition = 'transform 0.45s cubic-bezier(0.22,1,0.36,1), background-color 0.25s, color 0.25s';
+  t.style.transform = 'translate(0, 0)';
+};
 
-interface ButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'glass' | 'destructive';
+// Severity → soft palette. Each level maps to a hue used for the text accent,
+// a soft tint background (badges/score chips), and a solid bar/rule.
+export type RiskLevel = 'Emergency' | 'Urgent' | 'Consult' | 'Self-Care';
+
+export const riskStyle = (level: string) => {
+  switch (level) {
+    case 'Emergency':
+      return { hex: '#DC2626', tint: 'rgba(220,38,38,0.12)', code: 'EMG' };
+    case 'Urgent':
+      return { hex: '#D97706', tint: 'rgba(217,119,6,0.12)', code: 'URG' };
+    case 'Self-Care':
+      return { hex: '#0E7569', tint: 'rgba(14,117,105,0.12)', code: 'SLF' };
+    default: // Consult
+      return { hex: '#B45309', tint: 'rgba(180,83,9,0.12)', code: 'CON' };
+  }
+};
+
+// --- Buttons: teal pill, dark-ink hover, soft glow on primary ---
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'outline' | 'ghost' | 'destructive';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   loading?: boolean;
-  children?: React.ReactNode;
+  magnetic?: boolean;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', size = 'default', loading, children, ...props }, ref) => {
+  ({ className, variant = 'primary', size = 'default', loading, magnetic, children, onMouseMove, onMouseLeave, ...props }, ref) => {
     const variants = {
-      primary: "bg-primary text-primary-foreground hover:opacity-90 shadow-lg shadow-black/5 dark:shadow-white/5",
-      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-      ghost: "hover:bg-accent hover:text-accent-foreground",
-      glass: "glass-panel text-foreground hover:bg-white/5",
-      destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-lg",
+      primary: "bg-primary text-primary-foreground hover:bg-ink hover:text-ink-foreground shadow-teal",
+      outline: "bg-foreground/[0.05] text-foreground hover:bg-ink hover:text-ink-foreground",
+      ghost: "bg-transparent text-muted-foreground hover:text-foreground",
+      destructive: "bg-destructive text-destructive-foreground hover:opacity-90",
     };
-
     const sizes = {
-      default: "h-12 px-6 py-2",
-      sm: "h-9 rounded-lg px-3",
-      lg: "h-16 rounded-2xl px-8 text-lg",
-      icon: "h-10 w-10",
+      default: "h-12 px-6 text-sm",
+      sm: "h-10 px-4 text-[13px]",
+      lg: "h-[52px] px-8 text-[15px]",
+      icon: "h-12 w-12",
     };
-
     return (
-      <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
+      <button
         ref={ref}
         className={cn(
-          "relative inline-flex items-center justify-center whitespace-nowrap rounded-2xl text-sm font-medium transition-all duration-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-bold transition-colors will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45",
           variants[variant],
           sizes[size],
           className
         )}
         disabled={loading || props.disabled}
+        onMouseMove={magnetic ? (e) => { magnetMove(e); onMouseMove?.(e); } : onMouseMove}
+        onMouseLeave={magnetic ? (e) => { magnetLeave(e); onMouseLeave?.(e); } : onMouseLeave}
         {...props}
       >
-        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         {children}
-      </motion.button>
+      </button>
     );
   }
 );
 Button.displayName = "Button";
 
-export const BentoCard = React.forwardRef<HTMLDivElement, HTMLMotionProps<"div"> & { children?: React.ReactNode }>(
-  ({ className, ...props }, ref) => (
-    <motion.div
+// --- Card: white, generously rounded, soft shadow, hairline border ---
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  interactive?: boolean;
+}
+export const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, interactive, ...props }, ref) => (
+    <div
       ref={ref}
       className={cn(
-        "relative overflow-hidden rounded-3xl border border-border/40 bg-card/50 backdrop-blur-sm p-6 shadow-sm transition-all duration-500 hover:shadow-md hover:border-border/80 group",
+        "bg-card border border-foreground/[0.07] rounded-xl shadow-soft p-6 md:p-7",
+        interactive && "transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:shadow-soft-lg",
         className
       )}
       {...props}
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-      {props.children}
-    </motion.div>
+    />
   )
 );
-BentoCard.displayName = "BentoCard";
+Card.displayName = "Card";
 
-export const Badge = ({ className, variant = "default", ...props }: React.HTMLAttributes<HTMLDivElement> & { variant?: "default" | "neutral" | "outline" | "red" | "amber" | "emerald" }) => {
-  const variants = {
-    default: "bg-primary text-primary-foreground",
-    neutral: "bg-secondary text-secondary-foreground",
-    outline: "border border-border text-foreground",
-    red: "bg-red-500/10 text-red-600 border border-red-500/20",
-    amber: "bg-amber-500/10 text-amber-600 border border-amber-500/20",
-    emerald: "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20",
-  };
+// --- Dark "ink" panel: consultant, trust strip, profile ID card ---
+export const InkPanel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("bg-ink text-ink-foreground rounded-2xl overflow-hidden", className)}
+      {...props}
+    />
+  )
+);
+InkPanel.displayName = "InkPanel";
 
+// --- Severity tag: soft tinted pill, colored text ---
+export const SeverityTag: React.FC<{ level: string; className?: string }> = ({ level, className }) => {
+  const s = riskStyle(level);
   return (
-    <div className={cn(
-      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium font-mono tracking-wide transition-colors",
-      variants[variant],
-      className
-    )} {...props} />
+    <span
+      className={cn("inline-flex items-center rounded-full px-3.5 py-1.5 text-[13px] font-bold leading-none", className)}
+      style={{ background: s.tint, color: s.hex }}
+    >
+      {level}
+    </span>
   );
 };
 
+// Back-compat shim for older call sites
+export const riskBadgeVariant = (level: string): string => level;
+
+// --- Badge: neutral soft pill (used for profile chips, tags) ---
+export const Badge = ({ className, children, ...props }: React.HTMLAttributes<HTMLSpanElement>) => (
+  <span className={cn("inline-flex items-center rounded-full bg-foreground/[0.05] px-3 py-1.5 text-xs font-semibold leading-none", className)} {...props}>
+    {children}
+  </span>
+);
+
+// --- Section header: teal eyebrow label + hairline rule ---
+export const SectionHead: React.FC<{ index?: string; title: string; right?: React.ReactNode; className?: string }> = ({ index, title, right, className }) => (
+  <div className={cn("flex items-end justify-between gap-3 mb-4", className)}>
+    <div className="text-[12.5px] font-bold uppercase tracking-[0.06em] text-accent">
+      {index && <span className="mr-2 opacity-60">{index}</span>}
+      {title}
+    </div>
+    {right}
+  </div>
+);
+
+// --- Stepper: Describe → Analyze → Results ---
+export const Stepper: React.FC<{ active: number; className?: string }> = ({ active, className }) => {
+  const labels = ['Describe', 'Analyze', 'Results'];
+  return (
+    <div className={cn("flex gap-2", className)}>
+      {labels.map((label, i) => {
+        const state = i === active ? 'active' : i < active ? 'done' : 'todo';
+        return (
+          <div
+            key={label}
+            className={cn(
+              "flex-1 min-w-0 rounded-md px-2 py-2.5 flex items-center justify-center gap-2",
+              state === 'active' && "bg-ink text-ink-foreground",
+              state === 'done' && "bg-primary text-primary-foreground",
+              state === 'todo' && "bg-foreground/[0.06] text-muted-foreground"
+            )}
+          >
+            <span className="text-[13px] font-extrabold">{i + 1}</span>
+            <span className="text-[12.5px] font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// --- Inputs ---
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, ...props }, ref) => {
-    return (
-      <input
-        className={cn(
-          "flex h-12 w-full rounded-xl border border-border/50 bg-background/50 px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 hover:bg-accent/50 focus:bg-background",
-          className
-        )}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
+  ({ className, ...props }, ref) => (
+    <input
+      ref={ref}
+      className={cn(
+        "flex h-12 w-full rounded-md border border-foreground/[0.12] bg-background px-4 text-sm text-foreground placeholder:text-foreground/35 outline-none transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  )
 );
 Input.displayName = "Input";
 
 export const MinimalTextarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
-  ({ className, ...props }, ref) => {
-    return (
-      <textarea
-        className={cn(
-          "flex min-h-[120px] w-full rounded-2xl border-none bg-transparent px-0 py-4 text-xl md:text-2xl font-light leading-relaxed placeholder:text-muted-foreground/50 focus-visible:outline-none resize-none",
-          className
-        )}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
+  ({ className, ...props }, ref) => (
+    <textarea
+      ref={ref}
+      className={cn(
+        "flex min-h-[130px] w-full border-none bg-transparent p-0 text-lg md:text-xl leading-relaxed text-foreground placeholder:text-foreground/35 outline-none resize-none",
+        className
+      )}
+      {...props}
+    />
+  )
 );
 MinimalTextarea.displayName = "MinimalTextarea";
 
-export const PlaceRow: React.FC<{ place: Place; index: number }> = ({ place, index }) => {
-  // Construct a more reliable Maps URL. 
-  // If the API returns a 'googleMapsUri' that looks valid, use it.
-  // Otherwise, construct a search query using the Name and Address (if available) for precision.
-  const searchQuery = place.address 
-    ? `${place.name}, ${place.address}` 
-    : place.name;
-    
+// --- Risk meter: single soft sweep bar in the severity color ---
+export const RiskMeter: React.FC<{ score: number; level: string; showLabel?: boolean }> = ({ score, level, showLabel = true }) => {
+  const s = riskStyle(level);
+  return (
+    <div className="w-full">
+      <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-foreground/[0.08]" role="img" aria-label={`Risk score ${score} of 10`}>
+        <div
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{ width: `${score * 10}%`, background: s.hex, animation: 'sweep 1.2s cubic-bezier(0.22,1,0.36,1)' }}
+        />
+      </div>
+      {showLabel && (
+        <div className="mt-2 flex justify-between text-[11px] font-bold text-muted-foreground/70">
+          <span>MILD</span><span>URGENT</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Place row: soft, indents on hover, teal chevron ---
+export const PlaceRow: React.FC<{ place: Place; index: number }> = ({ place }) => {
+  const searchQuery = place.address ? `${place.name}, ${place.address}` : place.name;
   const mapLink = (place.googleMapsUri && place.googleMapsUri.startsWith('http'))
     ? place.googleMapsUri
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
-
   return (
-    <motion.a 
+    <a
       href={mapLink}
-      target="_blank" 
+      target="_blank"
       rel="noopener noreferrer"
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.1 }}
-      className="flex items-center justify-between p-4 rounded-2xl hover:bg-secondary/50 border border-transparent hover:border-border/50 transition-all group cursor-pointer"
+      className="group flex items-center justify-between gap-3 border-b border-foreground/[0.07] py-3.5 transition-[padding] last:border-b-0 hover:pl-1.5"
     >
-      <div className="flex flex-col gap-1">
-        <span className="font-medium text-foreground">{place.name}</span>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[15px] font-bold text-foreground">{place.name}</div>
+        <div className="mt-0.5 flex items-center gap-2 text-[12.5px] text-muted-foreground">
           {place.rating && (
-            <span className="flex items-center gap-1 bg-secondary px-1.5 py-0.5 rounded-md">
-              <Star size={10} className="fill-foreground text-foreground" />
-              {place.rating}
-            </span>
+            <span className="flex items-center gap-1"><Star size={11} className="fill-current" />{place.rating}</span>
           )}
-          <span>Medical Facility</span>
+          {place.address && <span className="truncate">· {place.address}</span>}
         </div>
       </div>
-      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-        <ArrowRight size={14} />
-      </div>
-    </motion.a>
+      <ArrowUpRight size={16} className="shrink-0 text-accent opacity-0 transition-opacity group-hover:opacity-100" />
+    </a>
   );
 };
 
 export const CitationRow: React.FC<{ citation: Citation }> = ({ citation }) => (
-  <motion.div 
-    initial={{ opacity: 0, y: 5 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-card/50 border border-border/40 rounded-xl p-3 text-xs"
-  >
-    <div className="flex items-center justify-between mb-2">
-      <span className="font-bold text-primary flex items-center gap-1">
-        <BookOpen size={10} /> {citation.source}
-      </span>
-      <span className="font-mono opacity-50 bg-secondary px-1.5 rounded">{citation.protocolId}</span>
+  <div className="rounded-lg border border-foreground/[0.07] bg-foreground/[0.02] p-3.5 text-xs">
+    <div className="mb-1.5 flex items-center justify-between gap-2">
+      <span className="truncate font-bold text-foreground">{citation.source}</span>
+      <span className="shrink-0 font-mono text-muted-foreground">{citation.protocolId}</span>
     </div>
-    <p className="text-muted-foreground leading-relaxed">{citation.summary}</p>
-  </motion.div>
+    <p className="leading-relaxed text-muted-foreground">{citation.summary}</p>
+  </div>
 );
 
 export const ThemeToggle = ({ isDark, toggle }: { isDark: boolean, toggle: () => void }) => (
   <button
     onClick={toggle}
-    className="relative w-12 h-6 rounded-full bg-secondary border border-border transition-colors focus:outline-none"
-    aria-label="Toggle Theme"
+    className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/[0.12] hover:text-accent"
+    aria-label="Toggle theme"
   >
-    <motion.div
-      className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background shadow-sm flex items-center justify-center border border-border/10"
-      animate={{ x: isDark ? 24 : 0 }}
-      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-    >
-      {isDark ? <Moon size={10} /> : <Sun size={10} />}
-    </motion.div>
+    {isDark ? <Moon size={16} /> : <Sun size={16} />}
   </button>
 );
 
+// --- Chat bubbles: soft rounded, right-aligned user / left-aligned AURA.
+// Rendered inside the dark InkPanel consultant, so colors invert. ---
 export const ChatBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
   const isUser = message.role === 'user';
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn("flex w-full mb-4", isUser ? "justify-end" : "justify-start")}
-    >
-      <div className={cn(
-        "max-w-[85%] rounded-2xl p-4 flex gap-3",
-        isUser ? "bg-secondary text-secondary-foreground rounded-tr-sm" : "bg-card border border-border/50 text-foreground rounded-tl-sm shadow-sm"
-      )}>
-        <div className={cn(
-          "shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5",
-          isUser ? "bg-primary/10 text-primary" : "bg-primary text-primary-foreground"
-        )}>
-          {isUser ? <User size={12} /> : <Sparkles size={12} />}
-        </div>
-        <div className="flex flex-col gap-2 overflow-hidden">
-           <div className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</div>
-           {message.image && (
-             <div className="rounded-lg overflow-hidden mt-1 border border-border/20">
-               <img src={message.image} alt="Attachment" className="max-w-full h-auto" />
-             </div>
-           )}
-           <div className="text-[10px] opacity-40 font-mono mt-1">
-             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-           </div>
-        </div>
+    <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+      <div
+        className={cn(
+          "max-w-[82%] px-4 py-3 text-sm leading-relaxed",
+          isUser
+            ? "bg-background text-foreground rounded-2xl rounded-tr-md"
+            : "bg-ink-foreground/[0.08] text-ink-foreground rounded-2xl rounded-tl-md"
+        )}
+      >
+        <span className="whitespace-pre-wrap">{message.text}</span>
+        {message.image && (
+          <div className="mt-2 overflow-hidden rounded-lg">
+            <img src={message.image} alt="Attachment" className="max-h-48 w-auto max-w-full" />
+          </div>
+        )}
       </div>
-    </motion.div>
+    </div>
   );
 };
 
-export const TypingIndicator: React.FC = () => {
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex w-full mb-4 justify-start"
-    >
-      <div className="bg-card border border-border/50 rounded-2xl p-4 flex gap-3 rounded-tl-sm shadow-sm items-center">
-         <div className="shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-             <Sparkles size={12} />
-         </div>
-         <div className="flex gap-1 h-4 items-center">
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className="w-1.5 h-1.5 bg-muted-foreground/60 rounded-full"
-                animate={{ y: [0, -5, 0] }}
-                transition={{
-                  duration: 0.6,
-                  repeat: Infinity,
-                  delay: i * 0.2,
-                  ease: "easeInOut"
-                }}
-              />
-            ))}
-         </div>
-      </div>
-    </motion.div>
-  );
-};
-
-export const StatsCard: React.FC<{ label: string; value: string; icon: any; trend?: string }> = ({ label, value, icon: Icon, trend }) => (
-  <motion.div 
-    whileHover={{ y: -2 }}
-    className="bg-card border border-border/40 rounded-2xl p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition-all"
-  >
-    <div className="flex justify-between items-start mb-4">
-      <div className="p-2 bg-secondary rounded-xl text-foreground">
-        <Icon size={18} />
-      </div>
-      {trend && (
-        <Badge variant={trend.includes('+') ? 'emerald' : 'neutral'}>
-          {trend}
-        </Badge>
-      )}
+export const TypingIndicator: React.FC = () => (
+  <div className="flex justify-start">
+    <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-md bg-ink-foreground/[0.08] px-4 py-3.5">
+      {[0, 0.2, 0.4].map((delay, i) => (
+        <span
+          key={i}
+          className="h-1.5 w-1.5 rounded-full bg-ink-foreground/70"
+          style={{ animation: `bounceDot 0.6s ease-in-out ${delay}s infinite` }}
+        />
+      ))}
     </div>
-    <div>
-      <div className="text-2xl font-bold mb-1 font-display">{value}</div>
-      <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide opacity-60">{label}</div>
-    </div>
-  </motion.div>
+  </div>
 );
 
-export const SuggestionChip: React.FC<{ text: string; onClick: () => void }> = ({ text, onClick }) => (
-  <motion.button
-    initial={{ opacity: 0, scale: 0.9 }}
-    animate={{ opacity: 1, scale: 1 }}
-    whileHover={{ scale: 1.05 }}
-    whileTap={{ scale: 0.95 }}
+// --- Stat block: soft card, big numeral ---
+export const StatsCard: React.FC<{ label: string; value: string; sub?: string; subColor?: string; icon?: any }> = ({ label, value, sub, subColor }) => (
+  <div className="flex flex-col gap-2 rounded-xl border border-foreground/[0.07] bg-card p-6 shadow-soft transition-transform duration-200 hover:-translate-y-0.5">
+    <span className="text-[13.5px] font-semibold text-muted-foreground">{label}</span>
+    <span className="text-4xl font-extrabold leading-none tracking-tight tabular-nums">{value}</span>
+    {sub && <span className="text-xs font-bold" style={subColor ? { color: subColor } : undefined}>{sub}</span>}
+  </div>
+);
+
+// --- Suggestion chip: soft pill, teal-tinted hover ---
+export const SuggestionChip: React.FC<{ text: string; onClick: () => void; dot?: string; dark?: boolean }> = ({ text, onClick, dot, dark }) => (
+  <button
     onClick={onClick}
-    className="flex-shrink-0 bg-secondary/50 hover:bg-secondary text-xs text-secondary-foreground/80 hover:text-secondary-foreground border border-border/50 rounded-full px-3 py-1.5 transition-colors text-left"
+    className={cn(
+      "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition-colors",
+      dark
+        ? "border border-ink-foreground/15 bg-ink-foreground/[0.08] text-ink-foreground/85 hover:bg-ink-foreground hover:text-ink"
+        : "border border-foreground/[0.12] bg-card text-foreground hover:border-primary hover:bg-accent/[0.06]"
+    )}
   >
+    {dot && <span className="h-2 w-2 rounded-full" style={{ background: dot }} />}
     {text}
-  </motion.button>
+  </button>
 );
