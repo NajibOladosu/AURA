@@ -27,3 +27,4 @@ server/.env
 CLAUDE.md
 UPCOMING_FEATURES.md
 BUGS.md
+.gstack/
