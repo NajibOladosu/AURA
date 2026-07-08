@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import authMiddleware from '../middleware/auth.js';
+import { recordAudit } from '../models/AuditLog.js';
 
 const router = express.Router();
 
@@ -81,8 +82,8 @@ router.post('/login', async (req, res) => {
             return res.status(500).json({ error: 'Server configuration error' });
         }
 
-        // Generate JWT
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        // Generate JWT (1-day expiry — hardened for PHI access)
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
         res.json({
             token,
@@ -90,6 +91,37 @@ router.post('/login', async (req, res) => {
         });
     } catch (error) {
         console.error('[LOGIN] Error:', error.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Re-authenticate to unlock the medical record. Verifies the current password
+// and issues a short-lived (5 min) EMR-scoped access token.
+router.post('/reauth', authMiddleware, async (req, res) => {
+    try {
+        const { password } = req.body;
+        if (!password) return res.status(400).json({ error: 'Password is required' });
+
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const isMatch = await bcrypt.compare(password, user.passwordHash);
+        if (!isMatch) return res.status(401).json({ error: 'Incorrect password' });
+
+        if (!process.env.JWT_SECRET) {
+            return res.status(500).json({ error: 'Server configuration error' });
+        }
+
+        const emrToken = jwt.sign(
+            { id: String(user._id), scope: 'emr' },
+            process.env.JWT_SECRET,
+            { expiresIn: '5m' }
+        );
+
+        recordAudit({ user: user._id, action: 'reauth', req });
+        res.json({ emrToken, expiresIn: 300 });
+    } catch (error) {
+        console.error('[REAUTH] Error:', error.message);
         res.status(500).json({ error: 'Server error' });
     }
 });
