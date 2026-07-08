@@ -14,6 +14,11 @@ import profileRoutes from './routes/profile.js';
 import historyRoutes from './routes/history.js';
 import geminiRoutes from './routes/gemini.js';
 import analyticsRoutes from './routes/analytics.js';
+import emrRoutes from './routes/emr.js';
+import { assertEncryptionReady } from './lib/crypto.js';
+
+// Fail fast if PHI encryption is not configured.
+assertEncryptionReady();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -87,6 +92,7 @@ const aiRateLimiter = rateLimit({
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/emr', emrRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/ai', aiRateLimiter, geminiRoutes);
 app.use('/api/analytics', analyticsRoutes);
