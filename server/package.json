@@ -6,7 +6,8 @@
     "type": "module",
     "scripts": {
         "start": "node server.js",
-        "dev": "nodemon server.js"
+        "dev": "nodemon server.js",
+        "verify:emr": "node scripts/verify-emr.mjs"
     },
     "dependencies": {
         "@google/genai": "latest",

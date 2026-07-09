@@ -99,7 +99,12 @@ PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
 GEMINI_API_KEY=your_gemini_api_key
+# 32-byte base64 key that encrypts the patient medical record (EMR).
+# Generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+EMR_ENCRYPTION_KEY=your_base64_32_byte_key
 ```
+
+> **Keep `EMR_ENCRYPTION_KEY` secret and back it up separately from the database.** All patient medical records are encrypted with it; losing it makes them unrecoverable. The server refuses to start if it is missing or malformed. See `server/.env.example`.
 
 Start the backend:
 
@@ -156,7 +161,7 @@ AURA is configured for Vercel monorepo deployment. The client builds as a static
 vercel
 ```
 
-2. Set environment variables (`MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`) in the Vercel dashboard.
+2. Set environment variables (`MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`, `EMR_ENCRYPTION_KEY`) in the Vercel dashboard.
 
 ---
 
@@ -168,6 +173,27 @@ vercel
 | `MONGO_URI` | MongoDB connection string |
 | `JWT_SECRET` | Secret key for JWT signing |
 | `GEMINI_API_KEY` | Google Gemini API key |
+| `EMR_ENCRYPTION_KEY` | Base64 32-byte key for AES-256-GCM encryption of patient medical records |
+
+---
+
+## Patient Medical Record (EMR)
+
+Beyond the basic triage profile, AURA stores a structured, **encrypted** patient medical record (demographics, allergies, conditions, medications, immunizations, procedures, vitals history, and uploaded documents/labs).
+
+Security model:
+
+- **Encryption at rest** — all PHI is encrypted with AES-256-GCM (`server/lib/crypto.js`) before it reaches MongoDB. Only non-PHI metadata is stored in cleartext. The ciphertext is bound to the owning user via GCM additional authenticated data, so an encrypted record cannot be moved between accounts.
+- **Re-authentication** — viewing the full record requires re-entering the password (`POST /api/auth/reauth`), which issues a short-lived, EMR-scoped access token.
+- **Audit log** — every read, write, export, and document access is recorded to an append-only log the patient can review (`GET /api/emr/audit`).
+- **Session hardening** — auth tokens expire after 1 day.
+- **Data ownership** — patients can export their full record as JSON (`GET /api/emr/export`).
+
+Verify the encryption + model layer (no database required):
+
+```bash
+cd server && npm run verify:emr
+```
 
 ---
 
