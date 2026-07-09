@@ -24,6 +24,7 @@ import {
   cn
 } from './components/UIComponents';
 import EmergencyCallPanel from './components/EmergencyCallPanel';
+import EmrView from './components/emr/EmrView';
 import {
   Activity,
   Camera,
@@ -99,7 +100,7 @@ const INITIAL_AGENTS: AgentState[] = [
 
 const App = () => {
   // Views
-  const [view, setView] = useState<'auth' | 'welcome' | 'input' | 'processing' | 'result' | 'history' | 'profile' | 'settings' | 'migrate'>('auth');
+  const [view, setView] = useState<'auth' | 'welcome' | 'input' | 'processing' | 'result' | 'history' | 'profile' | 'emr' | 'settings' | 'migrate'>('auth');
 
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -1232,6 +1233,7 @@ const App = () => {
     { label: 'Check symptoms', view: 'input' },
     { label: 'My record', view: 'history' },
     { label: 'My details', view: 'profile' },
+    { label: 'Medical record', view: 'emr' },
     { label: 'Settings', view: 'settings' },
   ];
 
@@ -2004,6 +2006,11 @@ const App = () => {
               <ArrowLeft size={14} /> Back to home
             </button>
           </motion.div>
+        )}
+
+        {/* ===== EMR (encrypted medical record) ===== */}
+        {view === 'emr' && (
+          <EmrView token={localStorage.getItem('aura_token')} onBack={() => setView('welcome')} />
         )}
 
         {/* ===== SETTINGS ===== */}
