@@ -43,13 +43,18 @@ export function assertEncryptionReady() {
     loadKey();
 }
 
-export function encrypt(plaintext) {
+// `aad` (Additional Authenticated Data) binds the ciphertext to a context —
+// e.g. the owning user id. GCM authenticates but does not encrypt the AAD, so
+// a blob encrypted for one user cannot be swapped into another user's record:
+// decrypt fails unless the same AAD is supplied.
+export function encrypt(plaintext, aad) {
     if (typeof plaintext !== 'string') {
         throw new Error('encrypt() expects a string');
     }
     const key = keyFor(CURRENT_KEY_ID);
     const iv = crypto.randomBytes(IV_LENGTH);
     const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+    if (aad != null) cipher.setAAD(Buffer.from(String(aad), 'utf8'));
     const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
     const tag = cipher.getAuthTag();
 
@@ -61,12 +66,13 @@ export function encrypt(plaintext) {
     };
 }
 
-export function decrypt(payload) {
+export function decrypt(payload, aad) {
     if (!payload || !payload.iv || !payload.tag || !payload.ciphertext) {
         throw new Error('decrypt() received a malformed payload');
     }
     const key = keyFor(payload.keyId || CURRENT_KEY_ID);
     const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(payload.iv, 'base64'));
+    if (aad != null) decipher.setAAD(Buffer.from(String(aad), 'utf8'));
     decipher.setAuthTag(Buffer.from(payload.tag, 'base64'));
     const plaintext = Buffer.concat([
         decipher.update(Buffer.from(payload.ciphertext, 'base64')),
@@ -76,10 +82,10 @@ export function decrypt(payload) {
 }
 
 // Convenience helpers for encrypting a JSON-serializable object.
-export function encryptJSON(obj) {
-    return encrypt(JSON.stringify(obj));
+export function encryptJSON(obj, aad) {
+    return encrypt(JSON.stringify(obj), aad);
 }
 
-export function decryptJSON(payload) {
-    return JSON.parse(decrypt(payload));
+export function decryptJSON(payload, aad) {
+    return JSON.parse(decrypt(payload, aad));
 }

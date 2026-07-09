@@ -39,15 +39,16 @@ export function emptyPHI() {
     };
 }
 
-// Assign + encrypt a full PHI payload.
+// Assign + encrypt a full PHI payload. The ciphertext is bound to the owning
+// user id (AAD) so a blob cannot be moved between records.
 medicalRecordSchema.methods.setPHI = function setPHI(phi) {
-    this.encryptedData = encryptJSON(phi);
+    this.encryptedData = encryptJSON(phi, String(this.user));
     this.updatedAt = Date.now();
 };
 
 // Decrypt and return the plain PHI payload (in memory only).
 medicalRecordSchema.methods.decrypted = function decrypted() {
-    const phi = decryptJSON(this.encryptedData);
+    const phi = decryptJSON(this.encryptedData, String(this.user));
     // Merge onto the canonical shape so older records gain new fields.
     return { ...emptyPHI(), ...phi };
 };
