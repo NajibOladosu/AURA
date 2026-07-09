@@ -11,6 +11,7 @@ Designed for speed in urgent situations, AURA works without requiring an account
 ## Features
 
 - **AI Symptom Analysis** — Structured triage powered by the fastest Gemini Flash models with risk scoring, condition identification, and immediate action recommendations.
+- **Encrypted Medical Record (EMR)** — Patient-owned health record (demographics, allergies, conditions, medications, immunizations, procedures, vitals history, and document/lab uploads). All PHI is encrypted at rest with AES-256-GCM, gated behind password re-authentication, and access is audit-logged. See [Patient Medical Record (EMR)](#patient-medical-record-emr).
 - **Multi-Modal Input** — Text, speech-to-text voice input, or image upload for visual symptoms.
 - **Guest-First Access** — Full triage functionality without sign-in. Guest sessions are stored locally in the browser and can be migrated to a permanent account.
 - **Location-Aware Facilities** — Detects user location and surfaces nearby hospitals, urgent care centers, and pharmacies via Google Search grounding.
@@ -46,24 +47,33 @@ aura/
 ├── client/                  # React SPA (Vite)
 │   ├── App.tsx              # Main application (views, state, handlers)
 │   ├── components/
-│   │   └── UIComponents.tsx # Shared UI primitives
+│   │   ├── UIComponents.tsx # Shared UI primitives
+│   │   └── emr/
+│   │       └── EmrView.tsx  # Encrypted medical record UI (re-auth, vitals, docs, audit)
 │   ├── lib/
-│   │   └── types.ts         # TypeScript interfaces
+│   │   └── types.ts         # TypeScript interfaces (incl. MedicalRecord)
 │   ├── index.html           # Entry HTML with Tailwind config
 │   └── vite.config.ts       # Vite config with API proxy
 ├── server/                  # Express API
 │   ├── server.js            # Entry point, middleware, route mounting
+│   ├── lib/
+│   │   └── crypto.js        # AES-256-GCM field encryption for PHI
 │   ├── middleware/
 │   │   └── auth.js          # JWT verification middleware
 │   ├── models/
 │   │   ├── User.js          # User authentication model
-│   │   ├── Profile.js       # Medical profile (allergies, conditions, medications)
+│   │   ├── Profile.js       # Legacy medical profile (compat shim over MedicalRecord)
+│   │   ├── MedicalRecord.js # Encrypted patient EMR
+│   │   ├── AuditLog.js      # Append-only PHI access log
 │   │   └── Session.js       # Triage sessions and chat history
-│   └── routes/
-│       ├── auth.js          # Register, login, token validation
-│       ├── gemini.js        # AI triage, chat, places, geocoding
-│       ├── history.js       # Session CRUD
-│       └── profile.js       # Profile CRUD
+│   ├── routes/
+│   │   ├── auth.js          # Register, login, re-auth, token validation
+│   │   ├── gemini.js        # AI triage, chat, places, geocoding
+│   │   ├── history.js       # Session CRUD
+│   │   ├── profile.js       # Legacy profile CRUD (backed by MedicalRecord)
+│   │   └── emr.js           # Encrypted medical record CRUD, vitals, documents, export, audit
+│   └── scripts/
+│       └── verify-emr.mjs   # Offline encryption + model verification
 ├── docker-compose.yml
 └── vercel.json
 ```
