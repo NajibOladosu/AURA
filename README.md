@@ -207,6 +207,18 @@ Verify the encryption + model layer (no database required):
 cd server && npm run verify:emr
 ```
 
+### Testing
+
+Automated tests cover the encryption and auth boundary — the security-critical core. No database required; they exercise the real crypto, model, and middleware logic in memory via Node's built-in test runner (zero extra dependencies).
+
+```bash
+cd server && npm test
+```
+
+- `test/crypto.test.mjs` — AES-256-GCM round-trip, no-plaintext-at-rest, per-call IV, AAD blob-swap rejection, tamper detection.
+- `test/medical-record.test.mjs` — PHI encrypted at rest, cross-user blob-swap rejection, triage-profile derivation.
+- `test/auth-boundary.test.mjs` — `authMiddleware` and the EMR re-auth guard: missing/forged/expired/wrong-scope/cross-account tokens.
+
 ---
 
 ## Medical Disclaimer
