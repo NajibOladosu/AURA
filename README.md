@@ -6,6 +6,8 @@ AURA is a medical triage application that uses Google's latest Gemini Flash mode
 
 Designed for speed in urgent situations, AURA works without requiring an account. Users can perform assessments immediately and optionally sign in to persist their data.
 
+> ⚠️ **Medical Disclaimer** — AURA is **not a substitute for professional medical advice, diagnosis, or treatment.** It is an informational triage aid only, and its AI-generated assessments may be incomplete or incorrect. Always seek the advice of a qualified physician or other health provider with any questions about a medical condition. **Never disregard professional medical advice or delay seeking it because of something AURA has told you. If you think you may have a medical emergency, call your local emergency number immediately.**
+
 ---
 
 ## Features
@@ -204,6 +206,19 @@ Verify the encryption + model layer (no database required):
 ```bash
 cd server && npm run verify:emr
 ```
+
+---
+
+## Medical Disclaimer
+
+AURA is provided for **informational and educational purposes only** and does **not** constitute medical advice, diagnosis, or treatment. The AI-generated risk levels, condition suggestions, and care recommendations are automated estimates that can be inaccurate, incomplete, or inappropriate for your specific situation.
+
+- AURA is **not** a licensed medical provider and does not establish a doctor–patient relationship.
+- Always consult a qualified healthcare professional for medical concerns.
+- Never disregard or delay professional medical advice because of AURA output.
+- **In an emergency, call your local emergency number (e.g. 911) or go to the nearest emergency department immediately** — do not rely on AURA.
+
+By using AURA you acknowledge these limitations and accept full responsibility for any decisions made based on its output.
 
 ---
 
