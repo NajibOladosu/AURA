@@ -11,7 +11,7 @@ const router = express.Router();
 
 // ---- EMR access guard (short-lived re-auth token) --------------------------
 // Sensitive reads require an `X-EMR-Access` JWT minted by POST /api/auth/reauth.
-const emrAccessGuard = (req, res, next) => {
+export const emrAccessGuard = (req, res, next) => {
     const token = req.header('X-EMR-Access');
     if (!token) {
         return res.status(403).json({ error: 'EMR access requires re-authentication', code: 'REAUTH_REQUIRED' });
